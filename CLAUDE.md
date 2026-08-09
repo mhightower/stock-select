@@ -41,6 +41,16 @@ export EODHD_API_KEY=your-eodhd-api-token
 Query it via `GET /api/screen/{strategy}/{symbol}`, e.g.
 `curl http://localhost:8080/api/screen/jade-lizard/AAPL`.
 
+## Testing
+
+JUnit 5, AssertJ, and Mockito come from `spring-boot-starter-test`.
+`org.wiremock:wiremock-standalone` (test scope) mocks EODHD's HTTP responses
+in `EodhdClientTest` so it's verified against the real response shapes, not
+just hand-built DTOs. `ScreeningControllerTest` uses `@WebMvcTest` (Spring
+Boot 4 moved this to `org.springframework.boot.webmvc.test.autoconfigure`
+and requires the `spring-boot-starter-webmvc-test` test dependency) with
+`@MockitoBean` from `spring-test` — Boot 4 removed the older `@MockBean`.
+
 ## Architecture
 
 **Data flow:** `ScreeningController` → `ScreeningService` → `EodhdClient`
