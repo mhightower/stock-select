@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+eodhd:
+  base-url: https://eodhd.com
+  api-key: ${EODHD_API_KEY:demo}
+
+strategy:
+  jade-lizard:
+    # Target days-to-expiration window for the chosen contract.
+    target-dte: 45
+    min-dte: 30
+    max-dte: 60
+    # Absolute delta each short leg should be closest to.
+    short-call-target-delta: 0.16
+    short-put-target-delta: 0.16
+    # Standard Jade Lizard construction rule: total credit must be at least
+    # this multiple of the put spread width to keep the trade's risk profile intact.
+    min-credit-to-width-ratio: 1.0
+
+logging:
+  level:
+    com.stockselect: INFO

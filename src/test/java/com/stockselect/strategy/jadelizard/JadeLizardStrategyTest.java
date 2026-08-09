@@ -1,0 +1,114 @@
+package com.stockselect.strategy.jadelizard;
+
+import com.stockselect.eodhd.dto.OptionContract;
+import com.stockselect.eodhd.dto.Quote;
+import com.stockselect.strategy.StrategyContext;
+import com.stockselect.strategy.TradeCandidate;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class JadeLizardStrategyTest {
+
+    private static final LocalDate EXPIRATION = LocalDate.now().plusDays(45);
+
+    private final JadeLizardProperties properties = new JadeLizardProperties(
+            45, 30, 60, 0.16, 0.16, 1.0);
+    private final JadeLizardStrategy strategy = new JadeLizardStrategy(properties);
+
+    @Test
+    void picksLegsAndComputesCreditWhenRuleIsSatisfied() {
+        List<OptionContract> chain = List.of(
+                call(110, 0.16, 1.00, 1.10),
+                call(105, 0.30, 2.00, 2.10),
+                put(95, -0.16, 1.00, 1.10),
+                put(94, -0.10, 0.55, 0.65),
+                put(90, -0.04, 0.10, 0.15)
+        );
+        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+
+        assertThat(candidates).hasSize(1);
+        TradeCandidate candidate = candidates.get(0);
+        assertThat(candidate.strategyName()).isEqualTo("jade-lizard");
+        assertThat(candidate.shortCallStrike()).isEqualTo(110.0);
+        assertThat(candidate.shortPutStrike()).isEqualTo(95.0);
+        assertThat(candidate.longPutStrike()).isEqualTo(94.0);
+        assertThat(candidate.definedRiskWidth()).isEqualTo(1.0);
+        assertThat(candidate.creditReceived()).isEqualTo(1.5);
+        assertThat(candidate.maxLoss()).isEqualTo(-0.5);
+        assertThat(candidate.upsideBreakEven()).isEqualTo(111.5);
+        assertThat(candidate.downsideBreakEven()).isEqualTo(93.5);
+    }
+
+    @Test
+    void returnsNoCandidateWhenCreditDoesNotCoverPutSpreadWidth() {
+        List<OptionContract> chain = List.of(
+                call(110, 0.16, 1.00, 1.10),
+                put(95, -0.16, 1.00, 1.10),
+                put(90, -0.08, 0.40, 0.50)
+        );
+        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
+    @Test
+    void returnsNoCandidateWhenNoExpirationIsInTheTargetDteWindow() {
+        List<OptionContract> chain = List.of(
+                call(110, 0.16, 1.00, 1.10, LocalDate.now().plusDays(5), 5),
+                put(95, -0.16, 1.00, 1.10, LocalDate.now().plusDays(5), 5)
+        );
+        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
+    private static OptionContract call(double strike, double delta, double bid, double ask) {
+        return call(strike, delta, bid, ask, EXPIRATION, 45);
+    }
+
+    private static OptionContract call(double strike, double delta, double bid, double ask,
+                                        LocalDate expiration, int dte) {
+        return contract(strike, "call", delta, bid, ask, expiration, dte);
+    }
+
+    private static OptionContract put(double strike, double delta, double bid, double ask) {
+        return put(strike, delta, bid, ask, EXPIRATION, 45);
+    }
+
+    private static OptionContract put(double strike, double delta, double bid, double ask,
+                                       LocalDate expiration, int dte) {
+        return contract(strike, "put", delta, bid, ask, expiration, dte);
+    }
+
+    private static OptionContract contract(double strike, String type, double delta, double bid, double ask,
+                                            LocalDate expiration, int dte) {
+        return new OptionContract(
+                "AAPL" + expiration + type + strike,
+                "AAPL.US",
+                expiration,
+                type,
+                strike,
+                bid,
+                ask,
+                100L,
+                500L,
+                delta,
+                0.05,
+                -0.02,
+                0.10,
+                0.25,
+                dte,
+                (bid + ask) / 2.0
+        );
+    }
+}
