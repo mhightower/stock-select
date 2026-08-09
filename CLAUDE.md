@@ -79,6 +79,22 @@ Query it via `GET /api/screen/{strategy}/{symbol}`, e.g.
 - `web/ScreeningController` — thin: one endpoint, `{strategy}/{symbol}` path
   variables map directly onto `ScreeningService.screen(symbol, strategyName)`.
 
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) for the
+subject line, plus a body explaining the *why*:
+
+```
+<type>(<optional scope>): <subject>
+
+<body>
+```
+
+- `type` is one of `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `build`.
+- Subject: imperative mood, no trailing period, e.g. `feat(strategy): add short strangle`.
+- Body: always include one, even for small changes — explain the motivation
+  or reasoning, not a restatement of the diff.
+
 ## Adding a new strategy
 
 1. Add a subpackage under `strategy/` (mirror `strategy/jadelizard/`).
