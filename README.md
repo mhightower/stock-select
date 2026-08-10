@@ -51,3 +51,7 @@ to run.
 Implement `TradeStrategy` (see `com.stockselect.strategy.jadelizard.JadeLizardStrategy`
 for reference), register it as a `@Component`, and it becomes selectable via
 `/api/screen/{strategy-name}/{symbol}` automatically.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE). Copyright © 2026 Marcus Hightower.

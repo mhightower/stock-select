@@ -17,6 +17,13 @@
     <name>stock-select</name>
     <description>Screens stocks and their option chains for options-selling trade candidates (starting with Jade Lizards) using the EODHD API</description>
 
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
     <properties>
         <java.version>26</java.version>
     </properties>
