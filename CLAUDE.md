@@ -111,6 +111,16 @@ new vendor client.
   `WebClient`'s default 256KB in-memory buffer to 10MB in
   `WebClientConfig` — a real chain response blows past the default and
   throws `DataBufferLimitException` at request time, not at startup.
+- Root package (`com.stockselect`) — `UpstreamApiException` wraps any
+  `WebClientResponseException` from either vendor client with which vendor
+  it came from; `EodhdClient`/`MarketDataClient` map to it via
+  `.onErrorMap(WebClientResponseException.class, ...)` right after
+  `bodyToMono`. `web/ApiExceptionHandler` (`@RestControllerAdvice`)
+  translates it into a clean JSON `{"error": "..."}` body: 429 from a
+  vendor stays 429, 401/403 (bad key/entitlement) becomes 502, anything
+  else also 502. Without this, a vendor error (e.g. MarketData.app's free
+  tier is 100 req/day and does get hit) surfaced as a raw 500 with a full
+  stack trace in the response.
 - `strategy/` — the extension point, and where `OptionContract` (the app's
   vendor-neutral option model, populated by whichever client fetched it)
   and `Quote` live conceptually. `TradeStrategy` is the interface every

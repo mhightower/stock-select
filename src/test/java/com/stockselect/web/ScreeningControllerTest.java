@@ -1,10 +1,12 @@
 package com.stockselect.web;
 
+import com.stockselect.UpstreamApiException;
 import com.stockselect.screening.ScreeningService;
 import com.stockselect.strategy.TradeCandidate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,5 +39,37 @@ class ScreeningControllerTest {
                 .andExpect(jsonPath("$[0].strategyName").value("jade-lizard"))
                 .andExpect(jsonPath("$[0].symbol").value("AAPL.US"))
                 .andExpect(jsonPath("$[0].creditReceived").value(1.5));
+    }
+
+    @Test
+    void returnsBadRequestForAnUnknownStrategy() throws Exception {
+        when(screeningService.screen("AAPL", "iron-condor"))
+                .thenThrow(new IllegalArgumentException("Unknown strategy: iron-condor"));
+
+        mockMvc.perform(get("/api/screen/iron-condor/AAPL"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Unknown strategy: iron-condor"));
+    }
+
+    @Test
+    void returnsTooManyRequestsWhenAVendorRateLimitsUs() throws Exception {
+        when(screeningService.screen("AAPL", "jade-lizard"))
+                .thenThrow(new UpstreamApiException("MarketData.app", HttpStatus.TOO_MANY_REQUESTS,
+                        new RuntimeException("429 Too Many Requests")));
+
+        mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error").value("MarketData.app rate limit exceeded — try again later."));
+    }
+
+    @Test
+    void returnsBadGatewayWhenAVendorRejectsTheApiKey() throws Exception {
+        when(screeningService.screen("AAPL", "jade-lizard"))
+                .thenThrow(new UpstreamApiException("EODHD", HttpStatus.FORBIDDEN,
+                        new RuntimeException("403 Forbidden")));
+
+        mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.error").value("EODHD rejected the request — check the API key and plan entitlements."));
     }
 }

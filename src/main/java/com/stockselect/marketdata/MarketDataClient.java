@@ -1,9 +1,11 @@
 package com.stockselect.marketdata;
 
+import com.stockselect.UpstreamApiException;
 import com.stockselect.marketdata.dto.OptionsChainResponse;
 import com.stockselect.strategy.OptionContract;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 
 import java.time.Instant;
@@ -15,6 +17,7 @@ import java.util.List;
 @Component
 public class MarketDataClient {
 
+    private static final String VENDOR = "MarketData.app";
     private static final ZoneId OPTIONS_EXPIRATION_ZONE = ZoneId.of("America/New_York");
     private static final int CHAIN_WINDOW_START_DAYS = 1;
     private static final int CHAIN_WINDOW_END_DAYS = 75;
@@ -37,6 +40,8 @@ public class MarketDataClient {
                         .build(symbol))
                 .retrieve()
                 .bodyToMono(OptionsChainResponse.class)
+                .onErrorMap(WebClientResponseException.class,
+                        ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
                 .flatMapMany(MarketDataClient::toContracts);
     }
 

@@ -1,13 +1,17 @@
 package com.stockselect.eodhd;
 
+import com.stockselect.UpstreamApiException;
 import com.stockselect.config.EodhdProperties;
 import com.stockselect.eodhd.dto.Quote;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 @Component
 public class EodhdClient {
+
+    private static final String VENDOR = "EODHD";
 
     private final WebClient webClient;
     private final EodhdProperties properties;
@@ -24,6 +28,8 @@ public class EodhdClient {
                         .queryParam("fmt", "json")
                         .build(symbol))
                 .retrieve()
-                .bodyToMono(Quote.class);
+                .bodyToMono(Quote.class)
+                .onErrorMap(WebClientResponseException.class,
+                        ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex));
     }
 }

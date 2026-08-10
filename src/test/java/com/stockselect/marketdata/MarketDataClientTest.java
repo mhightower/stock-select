@@ -1,21 +1,25 @@
 package com.stockselect.marketdata;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.stockselect.UpstreamApiException;
 import com.stockselect.strategy.OptionContract;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDate;
 import java.util.List;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Verifies MarketDataClient parses MarketData.app's actual "parallel arrays" response shape,
@@ -93,5 +97,21 @@ class MarketDataClientTest {
         List<OptionContract> contracts = client().getOptionsChain("ZZZZ").collectList().block();
 
         assertThat(contracts).isEmpty();
+    }
+
+    @Test
+    void wrapsAVendorErrorResponseInAnUpstreamApiException() {
+        wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
+                .willReturn(aResponse().withStatus(429).withBody("Too Many Requests")));
+
+        Flux<OptionContract> contracts = client().getOptionsChain("AAPL");
+
+        assertThatThrownBy(contracts::blockLast)
+                .isInstanceOf(UpstreamApiException.class)
+                .satisfies(ex -> {
+                    UpstreamApiException upstreamEx = (UpstreamApiException) ex;
+                    assertThat(upstreamEx.vendor()).isEqualTo("MarketData.app");
+                    assertThat(upstreamEx.status().value()).isEqualTo(429);
+                });
     }
 }
