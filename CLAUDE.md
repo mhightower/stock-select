@@ -23,25 +23,28 @@ the bare uppercased ticker before calling either client.
 
 ## Toolchain
 
-This environment does not have Java or Maven on `PATH` by default. They are
-installed locally under `~/tools` (Temurin JDK 26, Apache Maven 3.9.16,
-downloaded directly from Adoptium/Apache since apt's Ubuntu 22.04 repos don't
-carry JDK 26). Export these before running any Maven command:
+Use the Maven Wrapper (`./mvnw`), not a system `mvn` — it self-bootstraps
+the exact Maven version (`.mvn/wrapper/maven-wrapper.properties`) on first
+run, no separate Maven install needed. This is also what CI uses.
+
+This environment does not have a JDK on `PATH` by default (apt's Ubuntu
+22.04 repos don't carry JDK 26), so that part still needs manual setup —
+Temurin JDK 26 is installed locally under `~/tools`:
 
 ```bash
 export JAVA_HOME=~/tools/jdk-26.0.2+10
-export PATH="$JAVA_HOME/bin:~/tools/apache-maven-3.9.16/bin:$PATH"
+export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
 ## Commands
 
 ```bash
-mvn test                                    # unit tests only — no API keys needed
-mvn test -Dtest=JadeLizardStrategyTest      # run a single test class
-mvn test -Dtest=JadeLizardStrategyTest#picksLegsAndComputesCreditWhenRuleIsSatisfied  # single test method
-mvn verify                                  # unit tests + integration tests (needs both API keys, see below)
-mvn -DskipTests package                     # build the jar without running tests
-mvn spring-boot:run                         # run the service (needs both API keys set)
+./mvnw test                                    # unit tests only — no API keys needed
+./mvnw test -Dtest=JadeLizardStrategyTest      # run a single test class
+./mvnw test -Dtest=JadeLizardStrategyTest#picksLegsAndComputesCreditWhenRuleIsSatisfied  # single test method
+./mvnw verify                                  # unit tests + integration tests (needs both API keys, see below)
+./mvnw -DskipTests package                     # build the jar without running tests
+./mvnw spring-boot:run                         # run the service (needs both API keys set)
 ```
 
 The app needs both API tokens at runtime:
@@ -66,8 +69,8 @@ Boot 4 moved this to `org.springframework.boot.webmvc.test.autoconfigure`
 and requires the `spring-boot-starter-webmvc-test` test dependency) with
 `@MockitoBean` from `spring-test` — Boot 4 removed the older `@MockBean`.
 
-**Coverage:** `jacoco-maven-plugin` runs on every `mvn test` (bound to the
-`test` phase, not `verify`) and enforces a minimum of 80% overall line
+**Coverage:** `jacoco-maven-plugin` runs on every `./mvnw test` (bound to
+the `test` phase, not `verify`) and enforces a minimum of 80% overall line
 coverage (`BUNDLE`/`LINE`/`COVEREDRATIO`) — the build fails if coverage
 drops below that. HTML report: `target/site/jacoco/index.html`. Coverage is
 measured from unit tests only — integration tests run in a later phase and
@@ -76,16 +79,22 @@ aren't counted.
 **Unit vs. integration tests:** `*Test.java` classes are unit tests
 (Surefire, `test` phase) — fully isolated, WireMock stands in for both
 EODHD and MarketData.app, no network or API keys needed, and they're what
-`mvn test`/the 80% gate runs. `*ClientIT.java` classes (`EodhdClientIT`,
+`./mvnw test`/the 80% gate/CI runs. `*ClientIT.java` classes (`EodhdClientIT`,
 `MarketDataClientIT`) are integration tests (Failsafe, `integration-test`/
 `verify` phases) that call the real vendor APIs to catch drift WireMock
 mocks can't — e.g. the MarketData.app symbol-format and buffer-size issues
 below were both found this way, not by unit tests. Each is gated behind
 `@EnabledIfEnvironmentVariable` on its API key and skips cleanly (not fails)
-when that key isn't set, so `mvn verify` is safe to run without credentials
-— it just skips the ITs. To actually exercise them: `source .env` (`set -a`
-/`set +a`) then `mvn verify`. Follow the same `*ClientIT` pattern for any
-new vendor client.
+when that key isn't set, so `./mvnw verify` is safe to run without
+credentials — it just skips the ITs. To actually exercise them: `source .env`
+(`set -a`/`set +a`) then `./mvnw verify`. Follow the same `*ClientIT` pattern
+for any new vendor client.
+
+**CI:** `.github/workflows/ci.yml` runs `./mvnw test` (unit tests only —
+deliberately not `verify`, to avoid burning MarketData.app's free-tier daily
+quota on every push) on push/PR to `master`, and uploads the JaCoCo HTML
+report as a build artifact. `.github/dependabot.yml` opens weekly PRs for
+both Maven and GitHub Actions dependency updates.
 
 ## Architecture
 

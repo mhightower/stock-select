@@ -1,5 +1,7 @@
 # stock-select
 
+[![CI](https://github.com/mhightower/stock-select/actions/workflows/ci.yml/badge.svg)](https://github.com/mhightower/stock-select/actions/workflows/ci.yml)
+
 Spring Boot service that pulls stock quotes from [EODHD](https://eodhd.com/)
 and option chains from [MarketData.app](https://www.marketdata.app/), then
 screens them for options-selling trade candidates, starting with the Jade
@@ -20,7 +22,7 @@ Lizard strategy (short call + short put vertical spread).
 ## Running
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 ## Usage
@@ -38,12 +40,12 @@ combination satisfies the strategy's construction rules).
 ## Testing
 
 ```bash
-mvn test      # unit tests — isolated, no API keys needed
-mvn verify    # unit + integration tests — needs EODHD_API_KEY and MARKETDATA_API_KEY set
+./mvnw test      # unit tests — isolated, no API keys needed
+./mvnw verify    # unit + integration tests — needs EODHD_API_KEY and MARKETDATA_API_KEY set
 ```
 
 Integration tests (`*ClientIT`) call the real EODHD/MarketData.app APIs and
-skip automatically if their key isn't set, so `mvn verify` is always safe
+skip automatically if their key isn't set, so `./mvnw verify` is always safe
 to run.
 
 ## Adding a new strategy
