@@ -126,7 +126,9 @@ both Maven and GitHub Actions dependency updates.
   throws `DataBufferLimitException` at request time, not at startup.
 - `health/` — **health check** (`GET /health`, moved off the Actuator
   default `/actuator/health` via `management.endpoints.web.base-path: /`
-  in `application.yml`). `VendorHealthTracker` is passive — it never makes
+  in `application.yml`; the built-in `diskSpace` indicator is also turned
+  off there via `management.health.diskspace.enabled: false` — irrelevant
+  noise for a stateless API with no local storage). `VendorHealthTracker` is passive — it never makes
   its own vendor calls. Instead `EodhdClient`/`MarketDataClient` report the
   outcome of every real call they already make (`.doOnSuccess(...)` /
   `.doOnError(UpstreamApiException.class, ...)` right where they map

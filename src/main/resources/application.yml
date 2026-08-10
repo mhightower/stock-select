@@ -16,6 +16,9 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    diskspace:
+      enabled: false
 
 eodhd:
   base-url: https://eodhd.com
