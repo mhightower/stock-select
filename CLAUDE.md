@@ -129,7 +129,13 @@ both Maven and GitHub Actions dependency updates.
   vendor stays 429, 401/403 (bad key/entitlement) becomes 502, anything
   else also 502. Without this, a vendor error (e.g. MarketData.app's free
   tier is 100 req/day and does get hit) surfaced as a raw 500 with a full
-  stack trace in the response.
+  stack trace in the response. It also catches `NoHandlerFoundException`
+  for the same reason — any unmapped path (including `/`, before
+  `RootController` existed) otherwise fell through to Spring Boot's
+  Whitelabel HTML error page. That requires
+  `spring.mvc.throw-exception-if-no-handler-found: true` and
+  `spring.web.resources.add-mappings: false` in `application.yml`, or
+  DispatcherServlet swallows the 404 instead of throwing it.
 - `strategy/` — the extension point, and where `OptionContract` (the app's
   vendor-neutral option model, populated by whichever client fetched it)
   and `Quote` live conceptually. `TradeStrategy` is the interface every
@@ -156,6 +162,8 @@ both Maven and GitHub Actions dependency updates.
   `.US` suffix stripped) before either client sees it.
 - `web/ScreeningController` — thin: one endpoint, `{strategy}/{symbol}` path
   variables map directly onto `ScreeningService.screen(symbol, strategyName)`.
+- `web/RootController` — `GET /` returns a small JSON blurb pointing at the
+  real endpoint, instead of a 404.
 
 ## Commit messages
 
