@@ -35,6 +35,17 @@ exchange-suffixed symbols outright.
 Returns a JSON list of `TradeCandidate`s (empty if no expiration/strike
 combination satisfies the strategy's construction rules).
 
+## Testing
+
+```bash
+mvn test      # unit tests — isolated, no API keys needed
+mvn verify    # unit + integration tests — needs EODHD_API_KEY and MARKETDATA_API_KEY set
+```
+
+Integration tests (`*ClientIT`) call the real EODHD/MarketData.app APIs and
+skip automatically if their key isn't set, so `mvn verify` is always safe
+to run.
+
 ## Adding a new strategy
 
 Implement `TradeStrategy` (see `com.stockselect.strategy.jadelizard.JadeLizardStrategy`
