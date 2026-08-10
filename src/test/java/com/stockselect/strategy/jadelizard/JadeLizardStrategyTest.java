@@ -72,6 +72,47 @@ class JadeLizardStrategyTest {
         assertThat(candidates).isEmpty();
     }
 
+    @Test
+    void returnsNoCandidateWhenNoCallHasADelta() {
+        List<OptionContract> chain = List.of(
+                callNoDelta(110, 1.00, 1.10),
+                put(95, -0.16, 1.00, 1.10),
+                put(90, -0.08, 0.40, 0.50)
+        );
+        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
+    @Test
+    void returnsNoCandidateWhenNoPutHasADelta() {
+        List<OptionContract> chain = List.of(
+                call(110, 0.16, 1.00, 1.10),
+                putNoDelta(95, 1.00, 1.10),
+                putNoDelta(90, 0.40, 0.50)
+        );
+        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
+    @Test
+    void returnsNoCandidateWhenNoPutStrikeIsBelowTheShortPut() {
+        List<OptionContract> chain = List.of(
+                call(110, 0.16, 1.00, 1.10),
+                put(95, -0.16, 1.00, 1.10)
+        );
+        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
     private static OptionContract call(double strike, double delta, double bid, double ask) {
         return call(strike, delta, bid, ask, EXPIRATION, 45);
     }
@@ -79,6 +120,10 @@ class JadeLizardStrategyTest {
     private static OptionContract call(double strike, double delta, double bid, double ask,
                                         LocalDate expiration, int dte) {
         return contract(strike, "call", delta, bid, ask, expiration, dte);
+    }
+
+    private static OptionContract callNoDelta(double strike, double bid, double ask) {
+        return contract(strike, "call", null, bid, ask, EXPIRATION, 45);
     }
 
     private static OptionContract put(double strike, double delta, double bid, double ask) {
@@ -90,7 +135,11 @@ class JadeLizardStrategyTest {
         return contract(strike, "put", delta, bid, ask, expiration, dte);
     }
 
-    private static OptionContract contract(double strike, String type, double delta, double bid, double ask,
+    private static OptionContract putNoDelta(double strike, double bid, double ask) {
+        return contract(strike, "put", null, bid, ask, EXPIRATION, 45);
+    }
+
+    private static OptionContract contract(double strike, String type, Double delta, double bid, double ask,
                                             LocalDate expiration, int dte) {
         return new OptionContract(
                 "AAPL" + expiration + type + strike,

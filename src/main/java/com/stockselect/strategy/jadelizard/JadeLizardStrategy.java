@@ -59,7 +59,7 @@ public class JadeLizardStrategy implements TradeStrategy {
                 + shortPut.get().effectiveMidPrice()
                 - longPut.get().effectiveMidPrice();
         double width = shortPut.get().strike() - longPut.get().strike();
-        if (width <= 0 || credit < width * properties.minCreditToWidthRatio()) {
+        if (credit < width * properties.minCreditToWidthRatio()) {
             return List.of();
         }
 
