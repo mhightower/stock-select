@@ -2,6 +2,7 @@ package com.stockselect.marketdata;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.stockselect.UpstreamApiException;
+import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.strategy.OptionContract;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -32,12 +33,14 @@ class MarketDataClientTest {
             .options(wireMockConfig().dynamicPort())
             .build();
 
+    private final VendorHealthTracker healthTracker = new VendorHealthTracker();
+
     private MarketDataClient client() {
         WebClient webClient = WebClient.builder()
                 .baseUrl(wireMock.baseUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .build();
-        return new MarketDataClient(webClient);
+        return new MarketDataClient(webClient, healthTracker);
     }
 
     @Test
@@ -87,10 +90,11 @@ class MarketDataClientTest {
         assertThat(put.isPut()).isTrue();
         assertThat(put.strike()).isEqualTo(90.0);
         assertThat(put.delta()).isEqualTo(-0.16);
+        assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.UP);
     }
 
     @Test
-    void returnsNoContractsWhenTheResponseStatusIsNotOk() {
+    void returnsNoContractsWhenTheResponseStatusIsNotOkButStillRecordsVendorSuccess() {
         wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/ZZZZ/"))
                 .willReturn(okJson("""
                         { "s": "no_data", "errmsg": "Symbol not found." }
@@ -99,10 +103,12 @@ class MarketDataClientTest {
         List<OptionContract> contracts = client().getOptionsChain("ZZZZ").collectList().block();
 
         assertThat(contracts).isEmpty();
+        // A "no data for this symbol" business response is still a healthy vendor connection.
+        assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.UP);
     }
 
     @Test
-    void wrapsAVendorErrorResponseInAnUpstreamApiException() {
+    void wrapsAVendorErrorResponseInAnUpstreamApiExceptionAndRecordsFailure() {
         wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
                 .willReturn(aResponse().withStatus(429).withBody("Too Many Requests")));
 
@@ -115,5 +121,6 @@ class MarketDataClientTest {
                     assertThat(upstreamEx.vendor()).isEqualTo("MarketData.app");
                     assertThat(upstreamEx.status().value()).isEqualTo(429);
                 });
+        assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
     }
 }

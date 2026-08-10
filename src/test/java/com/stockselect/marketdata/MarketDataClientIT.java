@@ -2,6 +2,7 @@ package com.stockselect.marketdata;
 
 import com.stockselect.config.MarketDataProperties;
 import com.stockselect.config.WebClientConfig;
+import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.strategy.OptionContract;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -23,7 +24,7 @@ class MarketDataClientIT {
         MarketDataProperties properties = new MarketDataProperties(
                 "https://api.marketdata.app", System.getenv("MARKETDATA_API_KEY"));
         WebClient webClient = new WebClientConfig().marketDataWebClient(properties);
-        MarketDataClient client = new MarketDataClient(webClient);
+        MarketDataClient client = new MarketDataClient(webClient, new VendorHealthTracker());
 
         List<OptionContract> contracts = client.getOptionsChain("AAPL").collectList().block();
 

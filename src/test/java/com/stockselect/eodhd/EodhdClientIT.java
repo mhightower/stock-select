@@ -3,6 +3,7 @@ package com.stockselect.eodhd;
 import com.stockselect.config.EodhdProperties;
 import com.stockselect.config.WebClientConfig;
 import com.stockselect.eodhd.dto.Quote;
+import com.stockselect.health.VendorHealthTracker;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -20,7 +21,7 @@ class EodhdClientIT {
     void fetchesARealQuote() {
         EodhdProperties properties = new EodhdProperties("https://eodhd.com", System.getenv("EODHD_API_KEY"));
         WebClient webClient = new WebClientConfig().eodhdWebClient(properties);
-        EodhdClient client = new EodhdClient(webClient, properties);
+        EodhdClient client = new EodhdClient(webClient, properties, new VendorHealthTracker());
 
         Quote quote = client.getQuote("AAPL").block();
 

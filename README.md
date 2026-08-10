@@ -40,6 +40,20 @@ rules. `warnings` is non-empty if EODHD's quote was unavailable — the
 underlying price then falls back to MarketData.app's own (24h-delayed)
 price instead of failing the request.
 
+## Health check
+
+```bash
+curl "http://localhost:8080/health"
+```
+
+Reports whether EODHD and MarketData.app are currently reachable, based on
+the outcome of the app's own recent real requests to them — it doesn't
+make dedicated calls of its own, since both vendors' free tiers are
+tightly quota-limited (EODHD: 20/day, MarketData.app: 100/day) and a
+health check polled every few seconds would burn through that on its own.
+A vendor shows `UNKNOWN` until the app has actually talked to it at least
+once.
+
 ## Testing
 
 ```bash

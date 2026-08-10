@@ -8,6 +8,15 @@ spring:
     resources:
       add-mappings: false
 
+management:
+  endpoints:
+    web:
+      # Exposes health at /health instead of the default /actuator/health.
+      base-path: /
+  endpoint:
+    health:
+      show-details: always
+
 eodhd:
   base-url: https://eodhd.com
   api-key: ${EODHD_API_KEY:demo}

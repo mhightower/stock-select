@@ -3,6 +3,7 @@ package com.stockselect.eodhd;
 import com.stockselect.UpstreamApiException;
 import com.stockselect.config.EodhdProperties;
 import com.stockselect.eodhd.dto.Quote;
+import com.stockselect.health.VendorHealthTracker;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -11,14 +12,16 @@ import reactor.core.publisher.Mono;
 @Component
 public class EodhdClient {
 
-    private static final String VENDOR = "EODHD";
+    public static final String VENDOR = "EODHD";
 
     private final WebClient webClient;
     private final EodhdProperties properties;
+    private final VendorHealthTracker healthTracker;
 
-    public EodhdClient(WebClient eodhdWebClient, EodhdProperties properties) {
+    public EodhdClient(WebClient eodhdWebClient, EodhdProperties properties, VendorHealthTracker healthTracker) {
         this.webClient = eodhdWebClient;
         this.properties = properties;
+        this.healthTracker = healthTracker;
     }
 
     public Mono<Quote> getQuote(String symbol) {
@@ -29,7 +32,9 @@ public class EodhdClient {
                         .build(symbol))
                 .retrieve()
                 .bodyToMono(Quote.class)
+                .doOnSuccess(quote -> healthTracker.recordSuccess(VENDOR))
                 .onErrorMap(WebClientResponseException.class,
-                        ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex));
+                        ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
+                .doOnError(UpstreamApiException.class, ex -> healthTracker.recordFailure(VENDOR, ex.getMessage()));
     }
 }

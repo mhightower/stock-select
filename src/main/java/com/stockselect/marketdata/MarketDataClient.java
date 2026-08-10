@@ -1,6 +1,7 @@
 package com.stockselect.marketdata;
 
 import com.stockselect.UpstreamApiException;
+import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.marketdata.dto.OptionsChainResponse;
 import com.stockselect.strategy.OptionContract;
 import org.springframework.stereotype.Component;
@@ -17,15 +18,17 @@ import java.util.List;
 @Component
 public class MarketDataClient {
 
-    private static final String VENDOR = "MarketData.app";
+    public static final String VENDOR = "MarketData.app";
     private static final ZoneId OPTIONS_EXPIRATION_ZONE = ZoneId.of("America/New_York");
     private static final int CHAIN_WINDOW_START_DAYS = 1;
     private static final int CHAIN_WINDOW_END_DAYS = 75;
 
     private final WebClient webClient;
+    private final VendorHealthTracker healthTracker;
 
-    public MarketDataClient(WebClient marketDataWebClient) {
+    public MarketDataClient(WebClient marketDataWebClient, VendorHealthTracker healthTracker) {
         this.webClient = marketDataWebClient;
+        this.healthTracker = healthTracker;
     }
 
     /** Fetches every expiration within a ~1-75 DTE window, wide enough for near/medium-term strategies. */
@@ -40,8 +43,10 @@ public class MarketDataClient {
                         .build(symbol))
                 .retrieve()
                 .bodyToMono(OptionsChainResponse.class)
+                .doOnSuccess(response -> healthTracker.recordSuccess(VENDOR))
                 .onErrorMap(WebClientResponseException.class,
                         ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
+                .doOnError(UpstreamApiException.class, ex -> healthTracker.recordFailure(VENDOR, ex.getMessage()))
                 .flatMapMany(MarketDataClient::toContracts);
     }
 
