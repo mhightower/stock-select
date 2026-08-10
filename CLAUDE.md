@@ -51,6 +51,11 @@ Boot 4 moved this to `org.springframework.boot.webmvc.test.autoconfigure`
 and requires the `spring-boot-starter-webmvc-test` test dependency) with
 `@MockitoBean` from `spring-test` — Boot 4 removed the older `@MockBean`.
 
+**Coverage:** `jacoco-maven-plugin` runs on every `mvn test` (bound to the
+`test` phase, not `verify`) and enforces a minimum of 80% overall line
+coverage (`BUNDLE`/`LINE`/`COVEREDRATIO`) — the build fails if coverage
+drops below that. HTML report: `target/site/jacoco/index.html`.
+
 ## Architecture
 
 **Data flow:** `ScreeningController` → `ScreeningService` → `EodhdClient`
