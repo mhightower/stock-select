@@ -34,8 +34,11 @@ curl "http://localhost:8080/api/screen/jade-lizard/AAPL"
 Use the bare ticker (`AAPL`, not `AAPL.US`) — MarketData.app rejects
 exchange-suffixed symbols outright.
 
-Returns a JSON list of `TradeCandidate`s (empty if no expiration/strike
-combination satisfies the strategy's construction rules).
+Returns `{"candidates": [...], "warnings": [...]}`. `candidates` is empty
+if no expiration/strike combination satisfies the strategy's construction
+rules. `warnings` is non-empty if EODHD's quote was unavailable — the
+underlying price then falls back to MarketData.app's own (24h-delayed)
+price instead of failing the request.
 
 ## Testing
 

@@ -12,6 +12,7 @@ public record OptionContract(
         LocalDate expirationDate,
         String type,
         double strike,
+        double underlyingPrice,
         Double bid,
         Double ask,
         Long volume,

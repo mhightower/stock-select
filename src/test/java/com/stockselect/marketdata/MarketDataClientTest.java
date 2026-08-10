@@ -52,6 +52,7 @@ class MarketDataClientTest {
                           "expiration": [1789156800, 1789156800],
                           "side": ["call", "put"],
                           "strike": [110, 90],
+                          "underlyingPrice": [100.5, 100.5],
                           "dte": [45, 45],
                           "bid": [5.10, 1.00],
                           "ask": [5.40, 1.10],
@@ -76,6 +77,7 @@ class MarketDataClientTest {
         assertThat(call.expirationDate()).isEqualTo(LocalDate.of(2026, 9, 11));
         assertThat(call.isCall()).isTrue();
         assertThat(call.strike()).isEqualTo(110.0);
+        assertThat(call.underlyingPrice()).isEqualTo(100.5);
         assertThat(call.dte()).isEqualTo(45);
         assertThat(call.delta()).isEqualTo(0.16);
         assertThat(call.effectiveMidPrice()).isEqualTo(5.25);

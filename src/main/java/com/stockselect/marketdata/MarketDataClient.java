@@ -58,6 +58,7 @@ public class MarketDataClient {
                     toLocalDate(response.expiration().get(i)),
                     response.side().get(i),
                     response.strike().get(i),
+                    response.underlyingPrice().get(i),
                     response.bid().get(i),
                     response.ask().get(i),
                     response.volume().get(i),

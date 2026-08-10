@@ -56,7 +56,8 @@ export MARKETDATA_API_KEY=your-marketdata-app-api-token
 
 Query it via `GET /api/screen/{strategy}/{symbol}`, e.g.
 `curl http://localhost:8080/api/screen/jade-lizard/AAPL` — use the bare
-ticker (`AAPL`, not `AAPL.US`).
+ticker (`AAPL`, not `AAPL.US`). Returns `{"candidates": [...], "warnings": [...]}`
+(`ScreeningResult`), not a bare array — see the EODHD degradation note below.
 
 ## Testing
 
@@ -159,7 +160,20 @@ both Maven and GitHub Actions dependency updates.
   `EodhdClient`/`MarketDataClient` calls (`.block()`); everything below it
   is synchronous. If this ever needs to be non-blocking end-to-end, that's
   the seam. It's also where the symbol gets normalized (uppercased,
-  `.US` suffix stripped) before either client sees it.
+  `.US` suffix stripped) before either client sees it. EODHD's quote is
+  treated as optional, not required: it's only ever used for
+  `underlyingPrice` (a near-real-time number, nicer than MarketData's own
+  24h-delayed `underlyingPrice` embedded in every chain contract, but not
+  something the strategy actually needs to function), so a
+  `UpstreamApiException` from `EodhdClient.getQuote()` is caught in
+  `resolveUnderlyingPrice()`, falls back to the first contract's
+  `underlyingPrice`, and is surfaced as a string in `ScreeningResult.warnings()`
+  instead of failing the whole request — unlike a `MarketDataClient` failure,
+  which is NOT caught and still propagates to `ApiExceptionHandler` as
+  before, since there's no candidate to build at all without the chain.
+  `ScreeningResult(candidates, warnings)` is what the endpoint actually
+  returns (`{"candidates": [...], "warnings": [...]}`), not a bare
+  `List<TradeCandidate>`.
 - `web/ScreeningController` — thin: one endpoint, `{strategy}/{symbol}` path
   variables map directly onto `ScreeningService.screen(symbol, strategyName)`.
 - `web/RootController` — `GET /` returns a small JSON blurb pointing at the

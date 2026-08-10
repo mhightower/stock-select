@@ -66,7 +66,7 @@ public class JadeLizardStrategy implements TradeStrategy {
         TradeCandidate candidate = new TradeCandidate(
                 NAME,
                 context.symbol(),
-                context.quote().close(),
+                context.underlyingPrice(),
                 expiration.get(),
                 shortCall.get().strike(),
                 shortPut.get().strike(),

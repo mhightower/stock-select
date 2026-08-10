@@ -31,6 +31,7 @@ class MarketDataClientIT {
         OptionContract first = contracts.get(0);
         assertThat(first.underlyingSymbol()).isEqualTo("AAPL");
         assertThat(first.strike()).isGreaterThan(0);
+        assertThat(first.underlyingPrice()).isGreaterThan(0);
         assertThat(first.expirationDate()).isNotNull();
     }
 }

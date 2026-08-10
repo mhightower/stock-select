@@ -50,6 +50,7 @@ class OptionContractTest {
                 EXPIRATION,
                 type,
                 200.0,
+                193.5,
                 bid,
                 ask,
                 100L,

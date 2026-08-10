@@ -1,6 +1,5 @@
 package com.stockselect.strategy.jadelizard;
 
-import com.stockselect.eodhd.dto.Quote;
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
 import com.stockselect.strategy.TradeCandidate;
@@ -14,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JadeLizardStrategyTest {
 
     private static final LocalDate EXPIRATION = LocalDate.now().plusDays(45);
+    private static final double UNDERLYING_PRICE = 100.0;
 
     private final JadeLizardProperties properties = new JadeLizardProperties(
             45, 30, 60, 0.16, 0.16, 1.0);
@@ -28,9 +28,8 @@ class JadeLizardStrategyTest {
                 put(94, -0.10, 0.55, 0.65),
                 put(90, -0.04, 0.10, 0.15)
         );
-        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
 
-        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
 
         assertThat(candidates).hasSize(1);
         TradeCandidate candidate = candidates.get(0);
@@ -52,9 +51,8 @@ class JadeLizardStrategyTest {
                 put(95, -0.16, 1.00, 1.10),
                 put(90, -0.08, 0.40, 0.50)
         );
-        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
 
-        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
 
         assertThat(candidates).isEmpty();
     }
@@ -65,9 +63,8 @@ class JadeLizardStrategyTest {
                 call(110, 0.16, 1.00, 1.10, LocalDate.now().plusDays(5), 5),
                 put(95, -0.16, 1.00, 1.10, LocalDate.now().plusDays(5), 5)
         );
-        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
 
-        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
 
         assertThat(candidates).isEmpty();
     }
@@ -79,9 +76,8 @@ class JadeLizardStrategyTest {
                 put(95, -0.16, 1.00, 1.10),
                 put(90, -0.08, 0.40, 0.50)
         );
-        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
 
-        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
 
         assertThat(candidates).isEmpty();
     }
@@ -93,9 +89,8 @@ class JadeLizardStrategyTest {
                 putNoDelta(95, 1.00, 1.10),
                 putNoDelta(90, 0.40, 0.50)
         );
-        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
 
-        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
 
         assertThat(candidates).isEmpty();
     }
@@ -106,9 +101,8 @@ class JadeLizardStrategyTest {
                 call(110, 0.16, 1.00, 1.10),
                 put(95, -0.16, 1.00, 1.10)
         );
-        Quote quote = new Quote("AAPL.US", 0L, 100, 101, 99, 100, 1_000_000, 99.5, 0.5, 0.5);
 
-        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", quote, chain));
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
 
         assertThat(candidates).isEmpty();
     }
@@ -147,6 +141,7 @@ class JadeLizardStrategyTest {
                 expiration,
                 type,
                 strike,
+                UNDERLYING_PRICE,
                 bid,
                 ask,
                 100L,

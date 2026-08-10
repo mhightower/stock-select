@@ -17,6 +17,7 @@ public record OptionsChainResponse(
         List<Long> expiration,
         List<String> side,
         List<Double> strike,
+        List<Double> underlyingPrice,
         List<Integer> dte,
         List<Double> bid,
         List<Double> ask,
