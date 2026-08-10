@@ -1,6 +1,5 @@
 package com.stockselect.strategy;
 
-import com.stockselect.eodhd.dto.OptionContract;
 import com.stockselect.eodhd.dto.Quote;
 
 import java.util.List;

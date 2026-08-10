@@ -1,7 +1,7 @@
 package com.stockselect.strategy.jadelizard;
 
-import com.stockselect.eodhd.dto.OptionContract;
 import com.stockselect.eodhd.dto.Quote;
+import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
 import com.stockselect.strategy.TradeCandidate;
 import org.junit.jupiter.api.Test;

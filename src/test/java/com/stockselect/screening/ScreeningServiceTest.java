@@ -2,6 +2,7 @@ package com.stockselect.screening;
 
 import com.stockselect.eodhd.EodhdClient;
 import com.stockselect.eodhd.dto.Quote;
+import com.stockselect.marketdata.MarketDataClient;
 import com.stockselect.strategy.StrategyContext;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
@@ -24,24 +25,27 @@ class ScreeningServiceTest {
     @Mock
     private EodhdClient eodhdClient;
 
-    @Test
-    void dispatchesToTheMatchingStrategyWithAnUppercasedSymbol() {
-        Quote quote = new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31);
-        when(eodhdClient.getQuote("AAPL.US")).thenReturn(Mono.just(quote));
-        when(eodhdClient.getOptionsChain("AAPL.US")).thenReturn(Flux.empty());
+    @Mock
+    private MarketDataClient marketDataClient;
 
-        ScreeningService service = new ScreeningService(eodhdClient, List.of(new StubStrategy("jade-lizard")));
+    @Test
+    void dispatchesToTheMatchingStrategyWithABareUppercasedSymbol() {
+        Quote quote = new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31);
+        when(eodhdClient.getQuote("AAPL")).thenReturn(Mono.just(quote));
+        when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.empty());
+
+        ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")));
 
         List<TradeCandidate> result = service.screen("aapl.us", "jade-lizard");
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).symbol()).isEqualTo("AAPL.US");
+        assertThat(result.get(0).symbol()).isEqualTo("AAPL");
         assertThat(result.get(0).underlyingPrice()).isEqualTo(193.5);
     }
 
     @Test
     void throwsForAnUnknownStrategyName() {
-        ScreeningService service = new ScreeningService(eodhdClient, List.of(new StubStrategy("jade-lizard")));
+        ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")));
 
         assertThatThrownBy(() -> service.screen("AAPL", "iron-condor"))
                 .isInstanceOf(IllegalArgumentException.class)

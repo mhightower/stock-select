@@ -4,11 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Spring Boot service that pulls a stock quote and its option chain from the
-[EODHD](https://eodhd.com/) API and screens them for options-selling trade
-candidates. It currently implements one strategy — the **Jade Lizard**
-(short call + short put vertical spread) — built behind a `TradeStrategy`
-interface so more strategies can be added without touching existing code.
+A Spring Boot service that pulls a stock quote from [EODHD](https://eodhd.com/)
+and its option chain from [MarketData.app](https://www.marketdata.app/), then
+screens them for options-selling trade candidates. It currently implements
+one strategy — the **Jade Lizard** (short call + short put vertical spread)
+— built behind a `TradeStrategy` interface so more strategies can be added
+without touching existing code.
+
+**Why two data sources:** EODHD's options chain endpoint
+(`/api/mp/unicornbay/options/eod`) is a paid marketplace add-on not included
+on the free plan; MarketData.app has a permanent free tier ("Free Forever":
+100 requests/day, no card) that includes real option chains with Greeks —
+just 24h delayed. EODHD's quote endpoint stayed since it already worked on
+the free plan. **Symbol format matters**: MarketData.app rejects
+exchange-suffixed symbols like `AAPL.US` outright (`"Symbol not found"`)
+while EODHD accepts the bare ticker fine — `ScreeningService` normalizes to
+the bare uppercased ticker before calling either client.
 
 ## Toolchain
 
@@ -32,21 +43,24 @@ mvn -DskipTests package                     # build the jar without running test
 mvn spring-boot:run                         # run the service (needs EODHD_API_KEY set)
 ```
 
-The app needs an EODHD API token at runtime:
+The app needs both API tokens at runtime:
 
 ```bash
 export EODHD_API_KEY=your-eodhd-api-token
+export MARKETDATA_API_KEY=your-marketdata-app-api-token
 ```
 
 Query it via `GET /api/screen/{strategy}/{symbol}`, e.g.
-`curl http://localhost:8080/api/screen/jade-lizard/AAPL`.
+`curl http://localhost:8080/api/screen/jade-lizard/AAPL` — use the bare
+ticker (`AAPL`, not `AAPL.US`).
 
 ## Testing
 
 JUnit 5, AssertJ, and Mockito come from `spring-boot-starter-test`.
-`org.wiremock:wiremock-standalone` (test scope) mocks EODHD's HTTP responses
-in `EodhdClientTest` so it's verified against the real response shapes, not
-just hand-built DTOs. `ScreeningControllerTest` uses `@WebMvcTest` (Spring
+`org.wiremock:wiremock-standalone` (test scope) mocks both EODHD's and
+MarketData.app's HTTP responses in `EodhdClientTest`/`MarketDataClientTest`
+so the clients are verified against the real response shapes, not just
+hand-built DTOs. `ScreeningControllerTest` uses `@WebMvcTest` (Spring
 Boot 4 moved this to `org.springframework.boot.webmvc.test.autoconfigure`
 and requires the `spring-boot-starter-webmvc-test` test dependency) with
 `@MockitoBean` from `spring-test` — Boot 4 removed the older `@MockBean`.
@@ -59,19 +73,30 @@ drops below that. HTML report: `target/site/jacoco/index.html`.
 ## Architecture
 
 **Data flow:** `ScreeningController` → `ScreeningService` → `EodhdClient`
-(fetches quote + full option chain) → the matching `TradeStrategy` bean
-(picks legs, prices them, returns `TradeCandidate`s).
+(quote) + `MarketDataClient` (full option chain) → the matching
+`TradeStrategy` bean (picks legs, prices them, returns `TradeCandidate`s).
 
-- `eodhd/` — everything about talking to EODHD. `EodhdClient` wraps a
+- `eodhd/` — talking to EODHD for the quote only. `EodhdClient` wraps a
   `WebClient` and exposes `getQuote(symbol)` (flat JSON from
-  `/api/real-time/{symbol}`) and `getOptionsChain(symbol)` (JSON:API-style
-  envelope from `/api/mp/unicornbay/options/eod`, which requires a
-  unicornbay options data subscription on the EODHD account — the `demo`
-  token will not work for this endpoint). `OptionsResponse` models the
-  `{meta, data: [{attributes: {...}}]}` envelope; `EodhdClient` unwraps it
-  to a flat `List<OptionContract>` so nothing downstream deals with the
-  envelope.
-- `strategy/` — the extension point. `TradeStrategy` is the interface every
+  `/api/real-time/{symbol}`).
+- `marketdata/` — talking to MarketData.app for the option chain.
+  `MarketDataClient.getOptionsChain(symbol)` requests a `from`/`to` date
+  range (~1-75 DTE by default, wide enough for near/medium-term strategies)
+  and maps the response into `OptionContract`. The wire format is
+  **parallel arrays** (`OptionsChainResponse`: every field is a `List`,
+  index `i` across all lists describes one contract) rather than an array
+  of objects — very different from EODHD's shape, which is the whole
+  reason the mapping lives in its own client rather than being folded into
+  a generic "options DTO." Expiration dates arrive as Unix-epoch seconds
+  and must be converted using `America/New_York` (not UTC, or the
+  calendar date shifts) since that's the zone the exchange's 4pm/4:15pm
+  close times are anchored to. The `marketDataWebClient` bean raises
+  `WebClient`'s default 256KB in-memory buffer to 10MB in
+  `WebClientConfig` — a real chain response blows past the default and
+  throws `DataBufferLimitException` at request time, not at startup.
+- `strategy/` — the extension point, and where `OptionContract` (the app's
+  vendor-neutral option model, populated by whichever client fetched it)
+  and `Quote` live conceptually. `TradeStrategy` is the interface every
   strategy implements (`name()` + `evaluate(StrategyContext)`).
   `ScreeningService` autowires `List<TradeStrategy>` and indexes them by
   `name()`, so **a new strategy only needs to exist as a `@Component`** —
@@ -89,8 +114,10 @@ drops below that. HTML report: `target/site/jacoco/index.html`.
   record — add new tunables there rather than hardcoding thresholds in the
   strategy class.
 - `screening/ScreeningService` — the only place that blocks on the reactive
-  `EodhdClient` calls (`.block()`); everything below it is synchronous. If
-  this ever needs to be non-blocking end-to-end, that's the seam.
+  `EodhdClient`/`MarketDataClient` calls (`.block()`); everything below it
+  is synchronous. If this ever needs to be non-blocking end-to-end, that's
+  the seam. It's also where the symbol gets normalized (uppercased,
+  `.US` suffix stripped) before either client sees it.
 - `web/ScreeningController` — thin: one endpoint, `{strategy}/{symbol}` path
   variables map directly onto `ScreeningService.screen(symbol, strategyName)`.
 

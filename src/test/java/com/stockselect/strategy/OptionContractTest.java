@@ -1,4 +1,4 @@
-package com.stockselect.eodhd.dto;
+package com.stockselect.strategy;
 
 import org.junit.jupiter.api.Test;
 

@@ -5,6 +5,10 @@ eodhd:
   base-url: https://eodhd.com
   api-key: ${EODHD_API_KEY:demo}
 
+marketdata:
+  base-url: https://api.marketdata.app
+  api-key: ${MARKETDATA_API_KEY:}
+
 strategy:
   jade-lizard:
     # Target days-to-expiration window for the chosen contract.

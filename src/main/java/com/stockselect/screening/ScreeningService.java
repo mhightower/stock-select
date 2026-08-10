@@ -1,6 +1,7 @@
 package com.stockselect.screening;
 
 import com.stockselect.eodhd.EodhdClient;
+import com.stockselect.marketdata.MarketDataClient;
 import com.stockselect.strategy.StrategyContext;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
@@ -15,10 +16,12 @@ import java.util.stream.Collectors;
 public class ScreeningService {
 
     private final EodhdClient eodhdClient;
+    private final MarketDataClient marketDataClient;
     private final Map<String, TradeStrategy> strategiesByName;
 
-    public ScreeningService(EodhdClient eodhdClient, List<TradeStrategy> strategies) {
+    public ScreeningService(EodhdClient eodhdClient, MarketDataClient marketDataClient, List<TradeStrategy> strategies) {
         this.eodhdClient = eodhdClient;
+        this.marketDataClient = marketDataClient;
         this.strategiesByName = strategies.stream()
                 .collect(Collectors.toMap(TradeStrategy::name, Function.identity()));
     }
@@ -30,9 +33,11 @@ public class ScreeningService {
                     + ". Available: " + strategiesByName.keySet());
         }
 
-        String normalizedSymbol = symbol.toUpperCase();
+        // MarketData.app rejects exchange-suffixed symbols (e.g. "AAPL.US") outright; EODHD
+        // accepts the bare ticker fine, so normalize to bare for both clients.
+        String normalizedSymbol = symbol.toUpperCase().replaceFirst("\\.US$", "");
         var quote = eodhdClient.getQuote(normalizedSymbol).block();
-        var optionsChain = eodhdClient.getOptionsChain(normalizedSymbol).collectList().block();
+        var optionsChain = marketDataClient.getOptionsChain(normalizedSymbol).collectList().block();
 
         return strategy.evaluate(new StrategyContext(normalizedSymbol, quote, optionsChain));
     }

@@ -1,6 +1,6 @@
 package com.stockselect.strategy.jadelizard;
 
-import com.stockselect.eodhd.dto.OptionContract;
+import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
