@@ -50,7 +50,7 @@ public class JadeLizardStrategy implements TradeStrategy {
 
         Optional<OptionContract> longPut = puts.stream()
                 .filter(put -> put.strike() < shortPut.get().strike())
-                .max(Comparator.comparingDouble(OptionContract::strike));
+                .max(Comparator.comparingDouble(contract -> contract.strike()));
         if (longPut.isEmpty()) {
             return List.of();
         }
@@ -85,7 +85,7 @@ public class JadeLizardStrategy implements TradeStrategy {
     private Optional<LocalDate> pickExpiration(List<OptionContract> chain) {
         return chain.stream()
                 .filter(c -> c.dte() != null && c.dte() >= properties.minDte() && c.dte() <= properties.maxDte())
-                .map(OptionContract::expirationDate)
+                .map(contract -> contract.expirationDate())
                 .distinct()
                 .min(Comparator.comparingInt(date -> Math.abs(dteOf(chain, date) - properties.targetDte())));
     }
@@ -94,7 +94,7 @@ public class JadeLizardStrategy implements TradeStrategy {
         return chain.stream()
                 .filter(c -> expiration.equals(c.expirationDate()) && c.dte() != null)
                 .findFirst()
-                .map(OptionContract::dte)
+                .map(contract -> contract.dte())
                 .orElse(Integer.MAX_VALUE);
     }
 
