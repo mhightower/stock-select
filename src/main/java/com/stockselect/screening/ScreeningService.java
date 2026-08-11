@@ -25,7 +25,7 @@ public class ScreeningService {
         this.eodhdClient = eodhdClient;
         this.marketDataClient = marketDataClient;
         this.strategiesByName = strategies.stream()
-                .collect(Collectors.toMap(TradeStrategy::name, Function.identity()));
+                .collect(Collectors.toMap(strategy -> strategy.name(), Function.identity()));
     }
 
     public ScreeningResult screen(String symbol, String strategyName) {
