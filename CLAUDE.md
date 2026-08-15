@@ -6,10 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Spring Boot service that pulls a stock quote from [EODHD](https://eodhd.com/)
 and its option chain from [MarketData.app](https://www.marketdata.app/), then
-screens them for options-selling trade candidates. It currently implements
-one strategy — the **Jade Lizard** (short call + short put vertical spread)
-— built behind a `TradeStrategy` interface so more strategies can be added
-without touching existing code.
+screens them for options-selling trade candidates, behind a `TradeStrategy`
+interface so more strategies can be added without touching existing code.
+Two strategies exist today: the **Jade Lizard** (short call + short put
+vertical spread) and the **Bull Put Spread** (short put vertical spread,
+no call leg — a strict subset of the Jade Lizard, and the simpler of the
+two to read as a reference for adding another).
 
 **Why two data sources:** EODHD's options chain endpoint
 (`/api/mp/unicornbay/options/eod`) is a paid marketplace add-on not included
@@ -184,6 +186,18 @@ both Maven and GitHub Actions dependency updates.
   `strategy.jade-lizard`). `JadeLizardProperties` is a `@ConfigurationProperties`
   record — add new tunables there rather than hardcoding thresholds in the
   strategy class.
+- `strategy/bullputspread/` — the second strategy, and the simpler
+  reference to read first when adding a third. `BullPutSpreadStrategy` is
+  a strict subset of `JadeLizardStrategy` with the call leg removed
+  entirely: pick an expiration, pick the short put by target delta, pick
+  the long put as the next strike down, require
+  `minCreditToWidthRatio × width` (default 0.33 — "collect at least a
+  third of the width," the standard vertical-spread guideline, deliberately
+  looser than Jade Lizard's 1.0 since there's no naked call premium
+  cushioning it). `TradeCandidate`'s call-leg and `upsideBreakEven` fields
+  are left null (a vertical spread has only a downside breakeven) — no
+  changes to `TradeCandidate` itself were needed, confirming the shared
+  shape actually holds up for a strategy with fewer legs.
 - `screening/ScreeningService` — the only place that blocks on the reactive
   `EodhdClient`/`MarketDataClient` calls (`.block()`); everything below it
   is synchronous. If this ever needs to be non-blocking end-to-end, that's
@@ -225,7 +239,8 @@ subject line, plus a body explaining the *why*:
 
 ## Adding a new strategy
 
-1. Add a subpackage under `strategy/` (mirror `strategy/jadelizard/`).
+1. Add a subpackage under `strategy/` (mirror `strategy/bullputspread/` —
+   simpler starting point than `strategy/jadelizard/`).
 2. Implement `TradeStrategy`, return a unique lowercase-hyphenated `name()`.
 3. Annotate it `@Component` — `ScreeningService` picks it up automatically
    and it becomes reachable at `/api/screen/{name}/{symbol}`.

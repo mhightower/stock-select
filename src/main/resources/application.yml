@@ -40,6 +40,15 @@ strategy:
     # Standard Jade Lizard construction rule: total credit must be at least
     # this multiple of the put spread width to keep the trade's risk profile intact.
     min-credit-to-width-ratio: 1.0
+  bull-put-spread:
+    # Target days-to-expiration window for the chosen contract.
+    target-dte: 45
+    min-dte: 30
+    max-dte: 60
+    # Absolute delta the short put should be closest to.
+    short-put-target-delta: 0.30
+    # Standard vertical-spread guideline: aim to collect at least a third of the width as credit.
+    min-credit-to-width-ratio: 0.33
 
 logging:
   level:
