@@ -62,6 +62,7 @@ public class BullPutSpreadStrategy implements TradeStrategy {
         TradeCandidate candidate = new TradeCandidate(
                 NAME,
                 context.symbol(),
+                "USD",
                 context.underlyingPrice(),
                 expiration.get(),
                 null,

@@ -32,6 +32,7 @@ class BullPutSpreadStrategyTest {
         assertThat(candidates).hasSize(1);
         TradeCandidate candidate = candidates.get(0);
         assertThat(candidate.strategyName()).isEqualTo("bull-put-spread");
+        assertThat(candidate.currency()).isEqualTo("USD");
         assertThat(candidate.shortCallStrike()).isNull();
         assertThat(candidate.shortCallDelta()).isNull();
         assertThat(candidate.shortPutStrike()).isEqualTo(95.0);

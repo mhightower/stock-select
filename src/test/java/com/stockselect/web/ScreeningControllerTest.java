@@ -30,7 +30,7 @@ class ScreeningControllerTest {
     @Test
     void returnsCandidatesFromTheService() throws Exception {
         TradeCandidate candidate = new TradeCandidate(
-                "jade-lizard", "AAPL.US", 193.5, null,
+                "jade-lizard", "AAPL.US", "USD", 193.5, null,
                 200.0, 180.0, 175.0, 0.16, -0.15,
                 1.5, 5.0, 3.5, 201.5, 178.5);
         when(screeningService.screen("AAPL", "jade-lizard"))
@@ -40,6 +40,7 @@ class ScreeningControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.candidates[0].strategyName").value("jade-lizard"))
                 .andExpect(jsonPath("$.candidates[0].symbol").value("AAPL.US"))
+                .andExpect(jsonPath("$.candidates[0].currency").value("USD"))
                 .andExpect(jsonPath("$.candidates[0].creditReceived").value(1.5))
                 .andExpect(jsonPath("$.warnings").isEmpty());
     }
@@ -47,7 +48,7 @@ class ScreeningControllerTest {
     @Test
     void includesWarningsWhenEodhdDegradedGracefully() throws Exception {
         TradeCandidate candidate = new TradeCandidate(
-                "jade-lizard", "AAPL", 201.75, null,
+                "jade-lizard", "AAPL", "USD", 201.75, null,
                 200.0, 180.0, 175.0, 0.16, -0.15,
                 1.5, 5.0, 3.5, 201.5, 178.5);
         when(screeningService.screen("AAPL", "jade-lizard")).thenReturn(new ScreeningResult(

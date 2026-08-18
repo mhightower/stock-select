@@ -175,7 +175,13 @@ both Maven and GitHub Actions dependency updates.
   `name()`, so **a new strategy only needs to exist as a `@Component`** —
   no registry to update. `TradeCandidate` is the shared output shape;
   strategies that don't use a given leg (e.g. no long put) leave that field
-  null rather than the shape being subclassed per-strategy.
+  null rather than the shape being subclassed per-strategy. All prices are
+  per-share, not per-contract (multiply by 100 for actual dollars on a
+  standard equity contract) — the options-market convention, and how both
+  vendors already quote bid/ask/mid. `currency` is hardcoded `"USD"` rather
+  than read from either vendor's response, since neither actually includes
+  a currency field; correct as long as this app stays scoped to US-listed
+  equities/options (MarketData.app rejects non-US symbols outright anyway).
 - `strategy/jadelizard/` — the first strategy. `JadeLizardStrategy` picks an
   expiration inside the configured DTE window closest to the target DTE,
   picks the short call/put whose delta is closest to the configured target
