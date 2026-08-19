@@ -8,6 +8,8 @@ public record BullPutSpreadProperties(
         int minDte,
         int maxDte,
         double shortPutTargetDelta,
-        double minCreditToWidthRatio
+        double minCreditToWidthRatio,
+        long minOpenInterest,
+        double maxBidAskSpreadRatio
 ) {
 }

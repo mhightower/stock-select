@@ -191,7 +191,14 @@ both Maven and GitHub Actions dependency updates.
   construction rule, configured in `application.yml` under
   `strategy.jade-lizard`). `JadeLizardProperties` is a `@ConfigurationProperties`
   record — add new tunables there rather than hardcoding thresholds in the
-  strategy class.
+  strategy class. Both strategies also apply a liquidity gate (`isLiquid`,
+  duplicated in each class per the same self-contained-strategy reasoning
+  as the DTE/long-put picking logic below) before any delta-based
+  selection: a contract needs at least `minOpenInterest` open interest and
+  a bid-ask spread no wider than `maxBidAskSpreadRatio` of its mid, or it's
+  excluded entirely — otherwise a contract with a perfect delta match but
+  no real market (e.g. a 900% wide spread) could get suggested as tradeable
+  when it isn't.
 - `strategy/bullputspread/` — the second strategy, and the simpler
   reference to read first when adding a third. `BullPutSpreadStrategy` is
   a strict subset of `JadeLizardStrategy` with the call leg removed

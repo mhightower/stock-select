@@ -14,7 +14,8 @@ import java.util.Optional;
 /**
  * Short call + short put vertical spread (short put / long further-OTM put), sized so that
  * total credit received is at least {@link JadeLizardProperties#minCreditToWidthRatio()} times
- * the put spread width.
+ * the put spread width. Only considers contracts that clear a minimum liquidity bar (open
+ * interest and bid-ask spread width) — see {@link #isLiquid}.
  */
 @Component
 public class JadeLizardStrategy implements TradeStrategy {
@@ -103,7 +104,30 @@ public class JadeLizardStrategy implements TradeStrategy {
         return chain.stream()
                 .filter(c -> expiration.equals(c.expirationDate()))
                 .filter(c -> calls ? c.isCall() : c.isPut())
+                .filter(this::isLiquid)
                 .toList();
+    }
+
+    /**
+     * Rejects contracts with no real market to trade into: too little open interest, or a
+     * bid-ask spread too wide relative to the mid to fill at a fair price. Without this, the
+     * strategy could suggest a contract with a perfect delta match but no realistic way to
+     * actually enter the trade at the priced credit.
+     */
+    private boolean isLiquid(OptionContract contract) {
+        long openInterest = contract.openInterest() != null ? contract.openInterest() : 0;
+        if (openInterest < properties.minOpenInterest()) {
+            return false;
+        }
+        if (contract.bid() == null || contract.ask() == null) {
+            return false;
+        }
+        double mid = contract.effectiveMidPrice();
+        if (mid <= 0) {
+            return false;
+        }
+        double spreadRatio = (contract.ask() - contract.bid()) / mid;
+        return spreadRatio <= properties.maxBidAskSpreadRatio();
     }
 
     private Optional<OptionContract> closestByAbsoluteDelta(List<OptionContract> contracts, double targetAbsDelta) {

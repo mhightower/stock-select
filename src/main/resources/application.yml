@@ -40,6 +40,10 @@ strategy:
     # Standard Jade Lizard construction rule: total credit must be at least
     # this multiple of the put spread width to keep the trade's risk profile intact.
     min-credit-to-width-ratio: 1.0
+    # Liquidity gate: reject contracts with too little open interest, or a bid-ask
+    # spread too wide (as a fraction of the mid) to realistically fill at a fair price.
+    min-open-interest: 10
+    max-bid-ask-spread-ratio: 0.20
   bull-put-spread:
     # Target days-to-expiration window for the chosen contract.
     target-dte: 45
@@ -49,6 +53,10 @@ strategy:
     short-put-target-delta: 0.30
     # Standard vertical-spread guideline: aim to collect at least a third of the width as credit.
     min-credit-to-width-ratio: 0.33
+    # Liquidity gate: reject contracts with too little open interest, or a bid-ask
+    # spread too wide (as a fraction of the mid) to realistically fill at a fair price.
+    min-open-interest: 10
+    max-bid-ask-spread-ratio: 0.20
 
 logging:
   level:

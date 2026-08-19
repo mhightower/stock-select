@@ -16,14 +16,14 @@ class BullPutSpreadStrategyTest {
     private static final double UNDERLYING_PRICE = 100.0;
 
     private final BullPutSpreadProperties properties = new BullPutSpreadProperties(
-            45, 30, 60, 0.30, 0.33);
+            45, 30, 60, 0.30, 0.33, 10, 0.20);
     private final BullPutSpreadStrategy strategy = new BullPutSpreadStrategy(properties);
 
     @Test
     void picksLegsAndComputesCreditWhenRuleIsSatisfied() {
         List<OptionContract> chain = List.of(
                 put(95, -0.30, 1.00, 1.10),
-                put(93, -0.12, 0.30, 0.40),
+                put(93, -0.12, 0.32, 0.38),
                 put(80, -0.02, 0.05, 0.10)
         );
 
@@ -48,7 +48,7 @@ class BullPutSpreadStrategyTest {
     void returnsNoCandidateWhenCreditDoesNotCoverTheRequiredFractionOfWidth() {
         List<OptionContract> chain = List.of(
                 put(95, -0.30, 1.00, 1.10),
-                put(90, -0.05, 0.10, 0.20)
+                put(90, -0.05, 0.14, 0.16)
         );
 
         List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
@@ -84,6 +84,20 @@ class BullPutSpreadStrategyTest {
     void returnsNoCandidateWhenNoPutStrikeIsBelowTheShortPut() {
         List<OptionContract> chain = List.of(
                 put(95, -0.30, 1.00, 1.10)
+        );
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
+    @Test
+    void returnsNoCandidateWhenTheOnlyLongPutHasTooWideABidAskSpread() {
+        List<OptionContract> chain = List.of(
+                put(95, -0.30, 1.00, 1.10),
+                // Perfect strike for the long put, but bid/ask of 0.05/0.50 is a 900% spread
+                // relative to its mid — no realistic way to fill this leg at the priced credit.
+                put(93, -0.12, 0.05, 0.50)
         );
 
         List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));

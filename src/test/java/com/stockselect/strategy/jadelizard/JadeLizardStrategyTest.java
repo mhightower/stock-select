@@ -16,7 +16,7 @@ class JadeLizardStrategyTest {
     private static final double UNDERLYING_PRICE = 100.0;
 
     private final JadeLizardProperties properties = new JadeLizardProperties(
-            45, 30, 60, 0.16, 0.16, 1.0);
+            45, 30, 60, 0.16, 0.16, 1.0, 10, 0.20);
     private final JadeLizardStrategy strategy = new JadeLizardStrategy(properties);
 
     @Test
@@ -50,7 +50,7 @@ class JadeLizardStrategyTest {
         List<OptionContract> chain = List.of(
                 call(110, 0.16, 1.00, 1.10),
                 put(95, -0.16, 1.00, 1.10),
-                put(90, -0.08, 0.40, 0.50)
+                put(90, -0.08, 0.43, 0.47)
         );
 
         List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
@@ -75,7 +75,7 @@ class JadeLizardStrategyTest {
         List<OptionContract> chain = List.of(
                 callNoDelta(110, 1.00, 1.10),
                 put(95, -0.16, 1.00, 1.10),
-                put(90, -0.08, 0.40, 0.50)
+                put(90, -0.08, 0.43, 0.47)
         );
 
         List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
@@ -101,6 +101,21 @@ class JadeLizardStrategyTest {
         List<OptionContract> chain = List.of(
                 call(110, 0.16, 1.00, 1.10),
                 put(95, -0.16, 1.00, 1.10)
+        );
+
+        List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));
+
+        assertThat(candidates).isEmpty();
+    }
+
+    @Test
+    void returnsNoCandidateWhenTheOnlyLongPutHasTooWideABidAskSpread() {
+        List<OptionContract> chain = List.of(
+                call(110, 0.16, 1.00, 1.10),
+                put(95, -0.16, 1.00, 1.10),
+                // Perfect strike for the long put, but bid/ask of 0.05/0.50 is a 900% spread
+                // relative to its mid — no realistic way to fill this leg at the priced credit.
+                put(94, -0.10, 0.05, 0.50)
         );
 
         List<TradeCandidate> candidates = strategy.evaluate(new StrategyContext("AAPL.US", UNDERLYING_PRICE, chain));

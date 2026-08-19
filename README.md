@@ -38,9 +38,12 @@ exchange-suffixed symbols outright.
 
 Returns `{"candidates": [...], "warnings": [...]}`. `candidates` is empty
 if no expiration/strike combination satisfies the strategy's construction
-rules. `warnings` is non-empty if EODHD's quote was unavailable — the
-underlying price then falls back to MarketData.app's own (24h-delayed)
-price instead of failing the request.
+rules, *or* if the only otherwise-qualifying contracts fail the liquidity
+gate (too little open interest, or a bid-ask spread too wide to realistically
+fill — see `strategy.*.min-open-interest`/`max-bid-ask-spread-ratio` in
+`application.yml`). `warnings` is non-empty if EODHD's quote was
+unavailable — the underlying price then falls back to MarketData.app's own
+(24h-delayed) price instead of failing the request.
 
 ## Health check
 

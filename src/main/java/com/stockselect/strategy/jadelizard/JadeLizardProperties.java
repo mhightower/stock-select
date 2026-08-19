@@ -9,6 +9,8 @@ public record JadeLizardProperties(
         int maxDte,
         double shortCallTargetDelta,
         double shortPutTargetDelta,
-        double minCreditToWidthRatio
+        double minCreditToWidthRatio,
+        long minOpenInterest,
+        double maxBidAskSpreadRatio
 ) {
 }
