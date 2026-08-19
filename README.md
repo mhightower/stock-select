@@ -70,6 +70,26 @@ Integration tests (`*ClientIT`) call the real EODHD/MarketData.app APIs and
 skip automatically if their key isn't set, so `./mvnw verify` is always safe
 to run.
 
+## Docker / Podman
+
+```bash
+podman build -t stock-select .
+podman run --env-file .env -p 8080:8080 stock-select
+```
+
+Or with compose (`podman-compose up` / `docker compose up` — both read the
+same `docker-compose.yml`):
+
+```bash
+podman-compose up
+```
+
+Either way this reuses the same `.env` from the Setup section above — no
+separate copy of the API keys to maintain. The image is a multi-stage build
+(`eclipse-temurin:26-jdk-jammy` to build the jar with the Maven wrapper,
+`eclipse-temurin:26-jre-jammy` to run it) so `podman build` works from a
+clean checkout with no local Java install needed.
+
 ## Adding a new strategy
 
 Implement `TradeStrategy` (see `com.stockselect.strategy.bullputspread.BullPutSpreadStrategy`
