@@ -32,7 +32,7 @@ before starting it.
       in `application.yml`.
 - [ ] Add an "as of" timestamp to `ScreeningResult` so consumers know how
       stale the data is — matters more once caching lands.
-- [ ] Add OpenAPI/Swagger docs via `springdoc-openapi`.
+- [x] Add OpenAPI/Swagger docs via `springdoc-openapi`.
 - [ ] Add a `Dockerfile`.
 - [ ] Add input validation on the `symbol` path variable — fail fast with a
       400 instead of round-tripping to vendors for garbage input.

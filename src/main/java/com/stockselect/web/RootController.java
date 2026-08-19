@@ -8,6 +8,8 @@ public class RootController {
 
     @GetMapping("/")
     public ApiInfo root() {
-        return new ApiInfo("stock-select", "GET /api/screen/{strategy}/{symbol}, e.g. /api/screen/jade-lizard/AAPL");
+        return new ApiInfo("stock-select",
+                "GET /api/screen/{strategy}/{symbol}, e.g. /api/screen/jade-lizard/AAPL "
+                        + "— see /swagger-ui/index.html for full API docs");
     }
 }
