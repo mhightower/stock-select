@@ -18,7 +18,7 @@ before starting it.
 - [ ] **Add rate limiting on `/api/screen/{strategy}/{symbol}`.** Nothing
       currently stops a client (or a bug, or a bot) from burning the entire
       daily vendor quota in a handful of requests.
-- [ ] **Add a catch-all `@ExceptionHandler(Exception.class)`** in
+- [x] **Add a catch-all `@ExceptionHandler(Exception.class)`** in
       `ApiExceptionHandler` so unexpected exceptions also return the app's
       clean JSON error shape instead of falling through to Spring's default.
 
