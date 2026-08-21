@@ -68,6 +68,7 @@ public class BullPutSpreadStrategy implements TradeStrategy {
                 context.underlyingPrice(),
                 expiration.get(),
                 null,
+                null,
                 shortPut.get().strike(),
                 longPut.get().strike(),
                 null,

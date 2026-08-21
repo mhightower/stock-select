@@ -17,6 +17,7 @@ public record TradeCandidate(
         double underlyingPrice,
         LocalDate expirationDate,
         Double shortCallStrike,
+        Double longCallStrike,
         Double shortPutStrike,
         Double longPutStrike,
         Double shortCallDelta,

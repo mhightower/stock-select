@@ -1,4 +1,4 @@
-package com.stockselect.strategy.jadelizard;
+package com.stockselect.strategy.bearcallspread;
 
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
@@ -12,19 +12,20 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Short call + short put vertical spread (short put / long further-OTM put), sized so that
- * total credit received is at least {@link JadeLizardProperties#minCreditToWidthRatio()} times
- * the put spread width. Only considers contracts that clear a minimum liquidity bar (open
- * interest and bid-ask spread width) — see {@link #isLiquid}.
+ * Short call vertical spread (short call / long further-OTM call) — no put leg at all. Sized so
+ * that credit received is at least {@link BearCallSpreadProperties#minCreditToWidthRatio()} times
+ * the spread width, the standard vertical-spread construction guideline. Only considers contracts
+ * that clear a minimum liquidity bar (open interest and bid-ask spread width) — see
+ * {@link #isLiquid}.
  */
 @Component
-public class JadeLizardStrategy implements TradeStrategy {
+public class BearCallSpreadStrategy implements TradeStrategy {
 
-    public static final String NAME = "jade-lizard";
+    public static final String NAME = "bear-call-spread";
 
-    private final JadeLizardProperties properties;
+    private final BearCallSpreadProperties properties;
 
-    public JadeLizardStrategy(JadeLizardProperties properties) {
+    public BearCallSpreadStrategy(BearCallSpreadProperties properties) {
         this.properties = properties;
     }
 
@@ -40,26 +41,22 @@ public class JadeLizardStrategy implements TradeStrategy {
             return List.of();
         }
 
-        List<OptionContract> calls = contractsFor(context.optionsChain(), expiration.get(), true);
-        List<OptionContract> puts = contractsFor(context.optionsChain(), expiration.get(), false);
+        List<OptionContract> calls = callsFor(context.optionsChain(), expiration.get());
 
         Optional<OptionContract> shortCall = closestByAbsoluteDelta(calls, properties.shortCallTargetDelta());
-        Optional<OptionContract> shortPut = closestByAbsoluteDelta(puts, properties.shortPutTargetDelta());
-        if (shortCall.isEmpty() || shortPut.isEmpty()) {
+        if (shortCall.isEmpty()) {
             return List.of();
         }
 
-        Optional<OptionContract> longPut = puts.stream()
-                .filter(put -> put.strike() < shortPut.get().strike())
-                .max(Comparator.comparingDouble(contract -> contract.strike()));
-        if (longPut.isEmpty()) {
+        Optional<OptionContract> longCall = calls.stream()
+                .filter(call -> call.strike() > shortCall.get().strike())
+                .min(Comparator.comparingDouble(contract -> contract.strike()));
+        if (longCall.isEmpty()) {
             return List.of();
         }
 
-        double credit = shortCall.get().effectiveMidPrice()
-                + shortPut.get().effectiveMidPrice()
-                - longPut.get().effectiveMidPrice();
-        double width = shortPut.get().strike() - longPut.get().strike();
+        double credit = shortCall.get().effectiveMidPrice() - longCall.get().effectiveMidPrice();
+        double width = longCall.get().strike() - shortCall.get().strike();
         if (credit < width * properties.minCreditToWidthRatio()) {
             return List.of();
         }
@@ -71,16 +68,16 @@ public class JadeLizardStrategy implements TradeStrategy {
                 context.underlyingPrice(),
                 expiration.get(),
                 shortCall.get().strike(),
+                longCall.get().strike(),
                 null,
-                shortPut.get().strike(),
-                longPut.get().strike(),
+                null,
                 shortCall.get().delta(),
-                shortPut.get().delta(),
+                null,
                 round2(credit),
                 round2(width),
                 round2(width - credit),
                 round2(shortCall.get().strike() + credit),
-                round2(shortPut.get().strike() - credit)
+                null
         );
         return List.of(candidate);
     }
@@ -101,19 +98,17 @@ public class JadeLizardStrategy implements TradeStrategy {
                 .orElse(Integer.MAX_VALUE);
     }
 
-    private List<OptionContract> contractsFor(List<OptionContract> chain, LocalDate expiration, boolean calls) {
+    private List<OptionContract> callsFor(List<OptionContract> chain, LocalDate expiration) {
         return chain.stream()
                 .filter(c -> expiration.equals(c.expirationDate()))
-                .filter(c -> calls ? c.isCall() : c.isPut())
+                .filter(contract -> contract.isCall())
                 .filter(this::isLiquid)
                 .toList();
     }
 
     /**
      * Rejects contracts with no real market to trade into: too little open interest, or a
-     * bid-ask spread too wide relative to the mid to fill at a fair price. Without this, the
-     * strategy could suggest a contract with a perfect delta match but no realistic way to
-     * actually enter the trade at the priced credit.
+     * bid-ask spread too wide relative to the mid to fill at a fair price.
      */
     private boolean isLiquid(OptionContract contract) {
         long openInterest = contract.openInterest() != null ? contract.openInterest() : 0;

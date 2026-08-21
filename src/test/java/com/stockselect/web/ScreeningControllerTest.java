@@ -31,7 +31,7 @@ class ScreeningControllerTest {
     void returnsCandidatesFromTheService() throws Exception {
         TradeCandidate candidate = new TradeCandidate(
                 "jade-lizard", "AAPL.US", "USD", 193.5, null,
-                200.0, 180.0, 175.0, 0.16, -0.15,
+                200.0, null, 180.0, 175.0, 0.16, -0.15,
                 1.5, 5.0, 3.5, 201.5, 178.5);
         when(screeningService.screen("AAPL", "jade-lizard"))
                 .thenReturn(new ScreeningResult(List.of(candidate), List.of()));
@@ -49,7 +49,7 @@ class ScreeningControllerTest {
     void includesWarningsWhenEodhdDegradedGracefully() throws Exception {
         TradeCandidate candidate = new TradeCandidate(
                 "jade-lizard", "AAPL", "USD", 201.75, null,
-                200.0, 180.0, 175.0, 0.16, -0.15,
+                200.0, null, 180.0, 175.0, 0.16, -0.15,
                 1.5, 5.0, 3.5, 201.5, 178.5);
         when(screeningService.screen("AAPL", "jade-lizard")).thenReturn(new ScreeningResult(
                 List.of(candidate), List.of("EODHD unavailable (...); using MarketData.app's price instead.")));

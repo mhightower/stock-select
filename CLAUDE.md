@@ -8,10 +8,12 @@ A Spring Boot service that pulls a stock quote from [EODHD](https://eodhd.com/)
 and its option chain from [MarketData.app](https://www.marketdata.app/), then
 screens them for options-selling trade candidates, behind a `TradeStrategy`
 interface so more strategies can be added without touching existing code.
-Two strategies exist today: the **Jade Lizard** (short call + short put
-vertical spread) and the **Bull Put Spread** (short put vertical spread,
-no call leg — a strict subset of the Jade Lizard, and the simpler of the
-two to read as a reference for adding another).
+Three strategies exist today: the **Jade Lizard** (short call + short put
+vertical spread), the **Bull Put Spread** (short put vertical spread, no
+call leg — a strict subset of the Jade Lizard, and the simplest of the
+three to read as a reference for adding another), and the **Bear Call
+Spread** (short call vertical spread, no put leg — the Bull Put Spread's
+mirror image on the call side).
 
 **Why two data sources:** EODHD's options chain endpoint
 (`/api/mp/unicornbay/options/eod`) is a paid marketplace add-on not included
@@ -211,6 +213,26 @@ both Maven and GitHub Actions dependency updates.
   are left null (a vertical spread has only a downside breakeven) — no
   changes to `TradeCandidate` itself were needed, confirming the shared
   shape actually holds up for a strategy with fewer legs.
+- `strategy/bearcallspread/` — the third strategy, and the Bull Put
+  Spread's mirror image: `BearCallSpreadStrategy` picks an expiration,
+  picks the short call by target delta, picks the long call as the next
+  strike *up* (the put-side strategies pick the next strike *down* — this
+  is the one place the mirroring isn't literally identical code, since a
+  credit spread's protective leg always sits further OTM, which is a
+  higher strike on the call side and a lower strike on the put side), and
+  requires `minCreditToWidthRatio × width` (default 0.33, same guideline
+  as Bull Put Spread). Adding this strategy is what surfaced a real gap in
+  `TradeCandidate`: the record had `shortPutStrike`/`longPutStrike` but
+  only `shortCallStrike` with no `longCallStrike` to hold the protective
+  call leg's strike — fine for Jade Lizard's naked short call, not fine
+  for a call *spread*. `longCallStrike` was added to `TradeCandidate`
+  (right after `shortCallStrike`, mirroring the put pair's ordering),
+  which meant updating every direct `new TradeCandidate(...)` call site
+  (both strategies, `ScreeningServiceTest`, `ScreeningControllerTest`) —
+  worth remembering if `TradeCandidate` grows another field: it's a
+  record with a positional constructor, not a builder, so field additions
+  ripple to every construction site, not just the strategy adding the
+  field.
 - `screening/ScreeningService` — the only place that blocks on the reactive
   `EodhdClient`/`MarketDataClient` calls (`.block()`); everything below it
   is synchronous. If this ever needs to be non-blocking end-to-end, that's

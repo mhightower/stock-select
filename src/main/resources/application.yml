@@ -61,6 +61,20 @@ strategy:
     min-open-interest: 10
     max-bid-ask-spread-ratio: 0.20
 
+  bear-call-spread:
+    # Target days-to-expiration window for the chosen contract.
+    target-dte: 45
+    min-dte: 30
+    max-dte: 60
+    # Absolute delta the short call should be closest to.
+    short-call-target-delta: 0.30
+    # Standard vertical-spread guideline: aim to collect at least a third of the width as credit.
+    min-credit-to-width-ratio: 0.33
+    # Liquidity gate: reject contracts with too little open interest, or a bid-ask
+    # spread too wide (as a fraction of the mid) to realistically fill at a fair price.
+    min-open-interest: 10
+    max-bid-ask-spread-ratio: 0.20
+
 logging:
   level:
     com.stockselect: INFO

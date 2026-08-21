@@ -36,6 +36,7 @@ class JadeLizardStrategyTest {
         assertThat(candidate.strategyName()).isEqualTo("jade-lizard");
         assertThat(candidate.currency()).isEqualTo("USD");
         assertThat(candidate.shortCallStrike()).isEqualTo(110.0);
+        assertThat(candidate.longCallStrike()).isNull();
         assertThat(candidate.shortPutStrike()).isEqualTo(95.0);
         assertThat(candidate.longPutStrike()).isEqualTo(94.0);
         assertThat(candidate.definedRiskWidth()).isEqualTo(1.0);

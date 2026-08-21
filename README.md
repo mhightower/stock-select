@@ -4,9 +4,10 @@
 
 Spring Boot service that pulls stock quotes from [EODHD](https://eodhd.com/)
 and option chains from [MarketData.app](https://www.marketdata.app/), then
-screens them for options-selling trade candidates. Two strategies today:
-**Jade Lizard** (short call + short put vertical spread) and **Bull Put
-Spread** (short put vertical spread only).
+screens them for options-selling trade candidates. Three strategies today:
+**Jade Lizard** (short call + short put vertical spread), **Bull Put
+Spread** (short put vertical spread only), and **Bear Call Spread**
+(short call vertical spread only).
 
 ## Setup
 
@@ -31,6 +32,7 @@ Spread** (short put vertical spread only).
 ```bash
 curl "http://localhost:8080/api/screen/jade-lizard/AAPL"
 curl "http://localhost:8080/api/screen/bull-put-spread/AAPL"
+curl "http://localhost:8080/api/screen/bear-call-spread/AAPL"
 ```
 
 Use the bare ticker (`AAPL`, not `AAPL.US`) — MarketData.app rejects
