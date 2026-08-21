@@ -5,8 +5,6 @@ spring:
   threads:
     virtual:
       enabled: true
-  mvc:
-    throw-exception-if-no-handler-found: true
   web:
     resources:
       add-mappings: false
@@ -60,7 +58,6 @@ strategy:
     # spread too wide (as a fraction of the mid) to realistically fill at a fair price.
     min-open-interest: 10
     max-bid-ask-spread-ratio: 0.20
-
   bear-call-spread:
     # Target days-to-expiration window for the chosen contract.
     target-dte: 45
@@ -77,4 +74,4 @@ strategy:
 
 logging:
   level:
-    com.stockselect: INFO
+    '[com.stockselect]': INFO
