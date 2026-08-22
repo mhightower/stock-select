@@ -18,12 +18,30 @@ mirror image on the call side).
 **Why two data sources:** EODHD's options chain endpoint
 (`/api/mp/unicornbay/options/eod`) is a paid marketplace add-on not included
 on the free plan; MarketData.app has a permanent free tier ("Free Forever":
-100 requests/day, no card) that includes real option chains with Greeks —
-just 24h delayed. EODHD's quote endpoint stayed since it already worked on
-the free plan. **Symbol format matters**: MarketData.app rejects
+listed as 100 requests/day, though the `x-api-ratelimit-*` response headers
+show a 10,000/day pool in practice) that includes real option chains with
+Greeks — just 24h delayed. EODHD's quote endpoint stayed since it already
+worked on the free plan. **Symbol format matters**: MarketData.app rejects
 exchange-suffixed symbols like `AAPL.US` outright (`"Symbol not found"`)
 while EODHD accepts the bare ticker fine — `ScreeningService` normalizes to
 the bare uppercased ticker before calling either client.
+
+**MarketData.app's quota is metered per contract returned, not per HTTP
+call** — confirmed live (2026-08-21): a pre-batch check showed 9,725/10,000
+remaining, and just 10 sequential `/api/screen/*` calls (one options-chain
+fetch each, covering the app's 1-75 DTE window) against liquid mega-caps
+(AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, AMD, JPM, DIS) drained it to 0 —
+roughly 970 units/call, consistent with each chain response containing
+hundreds of contracts. In practice this means **~10 chain screens/day** on
+the free tier, not 100 or 10,000 — budget test batches accordingly, and
+check `x-api-ratelimit-remaining` (or the `x-api-ratelimit-reset` epoch
+timestamp for when it refills) before running more than a couple of
+symbols through `/api/screen/*` in one session. In response,
+`MarketDataClient`'s fetch window was narrowed from 1-75 to 25-65 DTE (see
+the `marketdata/` entry below) — cuts the contracts fetched per call
+without dropping anything any strategy actually uses, though the quota-per-
+contract behavior itself is a vendor characteristic this doesn't eliminate,
+just reduces the impact of.
 
 ## Toolchain
 
@@ -115,8 +133,12 @@ both Maven and GitHub Actions dependency updates.
   `/api/real-time/{symbol}`).
 - `marketdata/` — talking to MarketData.app for the option chain.
   `MarketDataClient.getOptionsChain(symbol)` requests a `from`/`to` date
-  range (~1-75 DTE by default, wide enough for near/medium-term strategies)
-  and maps the response into `OptionContract`. The wire format is
+  range (~25-65 DTE by default, matching the 30-60 DTE band every current
+  strategy actually uses, plus a small buffer — narrowed from an original
+  1-75 window after discovering MarketData.app meters this endpoint per
+  contract returned, not per HTTP call, so fetching a wider range than any
+  strategy uses just burns quota on contracts that get filtered out
+  immediately) and maps the response into `OptionContract`. The wire format is
   **parallel arrays** (`OptionsChainResponse`: every field is a `List`,
   index `i` across all lists describes one contract) rather than an array
   of objects — very different from EODHD's shape, which is the whole

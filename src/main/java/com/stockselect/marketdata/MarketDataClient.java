@@ -20,8 +20,11 @@ public class MarketDataClient {
 
     public static final String VENDOR = "MarketData.app";
     private static final ZoneId OPTIONS_EXPIRATION_ZONE = ZoneId.of("America/New_York");
-    private static final int CHAIN_WINDOW_START_DAYS = 1;
-    private static final int CHAIN_WINDOW_END_DAYS = 75;
+    // Matches the 30-60 DTE window shared by every current strategy, plus a small buffer — MarketData.app
+    // meters this endpoint per contract returned (not per HTTP call), so fetching a wider range than any
+    // strategy actually uses wastes quota on contracts that get filtered out immediately anyway.
+    private static final int CHAIN_WINDOW_START_DAYS = 25;
+    private static final int CHAIN_WINDOW_END_DAYS = 65;
 
     private final WebClient webClient;
     private final VendorHealthTracker healthTracker;
@@ -31,7 +34,7 @@ public class MarketDataClient {
         this.healthTracker = healthTracker;
     }
 
-    /** Fetches every expiration within a ~1-75 DTE window, wide enough for near/medium-term strategies. */
+    /** Fetches every expiration within a ~25-65 DTE window, matching the DTE band every current strategy uses. */
     public Flux<OptionContract> getOptionsChain(String symbol) {
         LocalDate from = LocalDate.now().plusDays(CHAIN_WINDOW_START_DAYS);
         LocalDate to = LocalDate.now().plusDays(CHAIN_WINDOW_END_DAYS);

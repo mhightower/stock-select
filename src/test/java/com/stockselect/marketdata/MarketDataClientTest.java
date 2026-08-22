@@ -11,11 +11,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -91,6 +93,24 @@ class MarketDataClientTest {
         assertThat(put.strike()).isEqualTo(90.0);
         assertThat(put.delta()).isEqualTo(-0.16);
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.UP);
+    }
+
+    @Test
+    void requestsOnlyThe25To65DteWindowSharedByAllStrategies() {
+        DateTimeFormatter isoDate = DateTimeFormatter.ISO_LOCAL_DATE;
+        String expectedFrom = LocalDate.now().plusDays(25).format(isoDate);
+        String expectedTo = LocalDate.now().plusDays(65).format(isoDate);
+
+        wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
+                .withQueryParam("from", equalTo(expectedFrom))
+                .withQueryParam("to", equalTo(expectedTo))
+                .willReturn(okJson("""
+                        { "s": "no_data", "errmsg": "Symbol not found." }
+                        """)));
+
+        client().getOptionsChain("AAPL").collectList().block();
+
+        wireMock.verify(1, getRequestedFor(urlPathEqualTo("/v1/options/chain/AAPL/")));
     }
 
     @Test
