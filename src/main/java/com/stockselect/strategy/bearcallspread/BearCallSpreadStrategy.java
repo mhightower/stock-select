@@ -2,6 +2,7 @@ package com.stockselect.strategy.bearcallspread;
 
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
+import com.stockselect.strategy.TosOrderFormatter;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
 import org.springframework.stereotype.Component;
@@ -77,7 +78,9 @@ public class BearCallSpreadStrategy implements TradeStrategy {
                 round2(width),
                 round2(width - credit),
                 round2(shortCall.get().strike() + credit),
-                null
+                null,
+                TosOrderFormatter.callVertical(context.symbol(), expiration.get(),
+                        shortCall.get().strike(), longCall.get().strike())
         );
         return List.of(candidate);
     }

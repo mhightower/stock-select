@@ -47,6 +47,12 @@ fill — see `strategy.*.min-open-interest`/`max-bid-ask-spread-ratio` in
 unavailable — the underlying price then falls back to MarketData.app's own
 (24h-delayed) price instead of failing the request.
 
+Each candidate also includes `tosOrderText` — order-entry text in
+TOS order-bar syntax, ready to paste into TOS's order bar instead
+of re-entering each leg by hand. This is built from documented TOS
+conventions and hasn't been verified against a live TOS session, so
+test-paste one before trusting it for a real order.
+
 ## Health check
 
 ```bash

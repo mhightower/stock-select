@@ -206,6 +206,14 @@ both Maven and GitHub Actions dependency updates.
   than read from either vendor's response, since neither actually includes
   a currency field; correct as long as this app stays scoped to US-listed
   equities/options (MarketData.app rejects non-US symbols outright anyway).
+  `TosOrderFormatter` builds `TradeCandidate.tosOrderText` — ready-to-paste
+  order-entry text in TOS order-bar syntax (`VERTICAL`/`CUSTOM`
+  keywords, `D MMM YY` dates, per-leg `-1`/`+1` quantity signs), one static
+  method per spread shape (`putVertical`, `callVertical`, `customThreeLeg`)
+  rather than inferring the shape from which `TradeCandidate` fields are
+  null, since each strategy already knows its own shape. Built from
+  documented TOS order-bar conventions, **not verified against a live TOS
+  session** — test-paste one before trusting it for a real order.
 - `strategy/jadelizard/` — the first strategy. `JadeLizardStrategy` picks an
   expiration inside the configured DTE window closest to the target DTE,
   picks the short call/put whose delta is closest to the configured target

@@ -2,6 +2,7 @@ package com.stockselect.strategy.bullputspread;
 
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
+import com.stockselect.strategy.TosOrderFormatter;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
 import org.springframework.stereotype.Component;
@@ -77,7 +78,9 @@ public class BullPutSpreadStrategy implements TradeStrategy {
                 round2(width),
                 round2(width - credit),
                 null,
-                round2(shortPut.get().strike() - credit)
+                round2(shortPut.get().strike() - credit),
+                TosOrderFormatter.putVertical(context.symbol(), expiration.get(),
+                        shortPut.get().strike(), longPut.get().strike())
         );
         return List.of(candidate);
     }

@@ -2,6 +2,7 @@ package com.stockselect.strategy.bullputspread;
 
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
+import com.stockselect.strategy.TosOrderFormatter;
 import com.stockselect.strategy.TradeCandidate;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +44,8 @@ class BullPutSpreadStrategyTest {
         assertThat(candidate.maxLoss()).isEqualTo(1.3);
         assertThat(candidate.upsideBreakEven()).isNull();
         assertThat(candidate.downsideBreakEven()).isEqualTo(94.3);
+        assertThat(candidate.tosOrderText()).isEqualTo(
+                TosOrderFormatter.putVertical("AAPL.US", EXPIRATION, 95, 93));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.stockselect.strategy.jadelizard;
 
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
+import com.stockselect.strategy.TosOrderFormatter;
 import com.stockselect.strategy.TradeCandidate;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,8 @@ class JadeLizardStrategyTest {
         assertThat(candidate.maxLoss()).isEqualTo(-0.5);
         assertThat(candidate.upsideBreakEven()).isEqualTo(111.5);
         assertThat(candidate.downsideBreakEven()).isEqualTo(93.5);
+        assertThat(candidate.tosOrderText()).isEqualTo(
+                TosOrderFormatter.customThreeLeg("AAPL.US", EXPIRATION, 110, 95, 94));
     }
 
     @Test

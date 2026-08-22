@@ -81,7 +81,7 @@ class ScreeningServiceTest {
         public List<TradeCandidate> evaluate(StrategyContext context) {
             return List.of(new TradeCandidate(
                     name, context.symbol(), "USD", context.underlyingPrice(), null,
-                    null, null, null, null, null, null, 0, null, null, null, null));
+                    null, null, null, null, null, null, 0, null, null, null, null, null));
         }
     }
 }

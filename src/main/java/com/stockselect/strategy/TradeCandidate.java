@@ -8,7 +8,10 @@ import java.time.LocalDate;
  * are left null. All prices are per-share (the options-market convention), not per-contract —
  * multiply by 100 for actual dollars on a standard equity contract. {@code currency} is always
  * "USD" (both vendors only cover US-listed equities/options) rather than read off either
- * vendor's response, since neither actually includes a currency field.
+ * vendor's response, since neither actually includes a currency field. {@code tosOrderText} is
+ * ready-to-paste order-entry text in TOS order-bar syntax, built by
+ * {@link TosOrderFormatter} — based on documented TOS conventions, not verified against a live
+ * TOS session.
  */
 public record TradeCandidate(
         String strategyName,
@@ -26,6 +29,7 @@ public record TradeCandidate(
         Double definedRiskWidth,
         Double maxLoss,
         Double upsideBreakEven,
-        Double downsideBreakEven
+        Double downsideBreakEven,
+        String tosOrderText
 ) {
 }

@@ -2,6 +2,7 @@ package com.stockselect.strategy.jadelizard;
 
 import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
+import com.stockselect.strategy.TosOrderFormatter;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
 import org.springframework.stereotype.Component;
@@ -80,7 +81,9 @@ public class JadeLizardStrategy implements TradeStrategy {
                 round2(width),
                 round2(width - credit),
                 round2(shortCall.get().strike() + credit),
-                round2(shortPut.get().strike() - credit)
+                round2(shortPut.get().strike() - credit),
+                TosOrderFormatter.customThreeLeg(context.symbol(), expiration.get(),
+                        shortCall.get().strike(), shortPut.get().strike(), longPut.get().strike())
         );
         return List.of(candidate);
     }
