@@ -2,6 +2,13 @@
 
 [![CI](https://github.com/mhightower/stock-select/actions/workflows/ci.yml/badge.svg)](https://github.com/mhightower/stock-select/actions/workflows/ci.yml)
 
+> **Not investment advice.** This tool screens options data against
+> mechanical, configurable rules — it does not evaluate suitability, risk
+> tolerance, or market conditions, and a returned candidate is not a
+> recommendation to enter any trade. Options trading carries substantial
+> risk of loss. Do your own research and consult a licensed financial
+> advisor before trading.
+
 Spring Boot service that pulls stock quotes from [EODHD](https://eodhd.com/)
 and option chains from [MarketData.app](https://www.marketdata.app/), then
 screens them for options-selling trade candidates. Three strategies today:

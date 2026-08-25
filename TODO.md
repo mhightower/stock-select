@@ -47,4 +47,6 @@ before starting it.
 - [ ] Add structured logging / metrics export (Micrometer → Prometheus) and
       request correlation IDs.
 - [ ] Add persistence/audit history of past screens.
-- [ ] Add an explicit "not investment advice" disclaimer to API responses.
+- [x] Add an explicit "not investment advice" disclaimer — done in
+      `README.md` rather than API responses (user's call when this was
+      picked up).
