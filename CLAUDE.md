@@ -94,6 +94,24 @@ hand-built DTOs. `ScreeningControllerTest` uses `@WebMvcTest` (Spring
 Boot 4 moved this to `org.springframework.boot.webmvc.test.autoconfigure`
 and requires the `spring-boot-starter-webmvc-test` test dependency) with
 `@MockitoBean` from `spring-test` — Boot 4 removed the older `@MockBean`.
+`StockSelectApplicationTests` is the one full `@SpringBootTest` (not a
+slice) — it boots the entire context on a random port and hits `/` and
+`/health` for real, catching bean-wiring/`@ConfigurationProperties`-binding
+failures that no slice test or pure unit test would surface (everything
+else only loads part of the context or none at all). It needs no API keys
+or network access, since neither endpoint calls a vendor and both vendor
+properties have safe defaults (`${EODHD_API_KEY:demo}` /
+`${MARKETDATA_API_KEY:}`). Needs three extra test-scope dependencies
+found the hard way: Spring Boot 4 moved `TestRestTemplate` out of
+`spring-boot-starter-test` entirely into `spring-boot-resttestclient`
+(package `org.springframework.boot.resttestclient`, not the old
+`org.springframework.boot.test.web.client`); that module's
+autoconfiguration doesn't activate automatically even with
+`webEnvironment = RANDOM_PORT` — it needs the test class annotated with
+`@AutoConfigureTestRestTemplate`; and its autoconfiguration reflectively
+needs `RestTemplateBuilder`, which lives in `spring-boot-restclient` — a
+module `spring-boot-starter-web` doesn't pull in since this app only ever
+uses `WebClient`, never `RestTemplate`, in its own code.
 
 **Coverage:** `jacoco-maven-plugin` runs on every `./mvnw test` (bound to
 the `test` phase, not `verify`) and enforces a minimum of 80% overall line
