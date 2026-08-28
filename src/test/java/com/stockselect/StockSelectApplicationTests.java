@@ -40,4 +40,20 @@ class StockSelectApplicationTests {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("\"status\":\"UNKNOWN\"");
     }
+
+    @Test
+    void servesPrometheusMetricsUnderActuator() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/prometheus", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("jvm_memory_used_bytes");
+    }
+
+    @Test
+    void servesMetricsListUnderActuator() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("\"names\"");
+    }
 }

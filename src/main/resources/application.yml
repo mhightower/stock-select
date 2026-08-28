@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  application:
+    name: stock-select
   threads:
     virtual:
       enabled: true
@@ -12,14 +14,25 @@ spring:
 management:
   endpoints:
     web:
-      # Exposes health at /health instead of the default /actuator/health.
+      # Exposes health at /health instead of the default /actuator/health; the rest of the
+      # ops surface (metrics, prometheus, info) stays under /actuator to keep it separate
+      # from both /health and the app's own /api/* routes.
       base-path: /
+      exposure:
+        include: health, prometheus, metrics, info
+      path-mapping:
+        prometheus: actuator/prometheus
+        metrics: actuator/metrics
+        info: actuator/info
   endpoint:
     health:
       show-details: always
   health:
     diskspace:
       enabled: false
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 eodhd:
   base-url: https://eodhd.com
@@ -75,3 +88,9 @@ strategy:
 logging:
   level:
     '[com.stockselect]': INFO
+  pattern:
+    # %kvp renders the SLF4J fluent addKeyValue() fields added in later tasks (strategy,
+    # symbol, vendor, status, latencyMs) — silently dropped by Boot's default colored
+    # pattern otherwise. ANSI color codes are dropped in the process, which is fine for
+    # containerized log output that usually gets stripped/reformatted by a log collector.
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %-40.40logger{39} : %m %kvp%n"
