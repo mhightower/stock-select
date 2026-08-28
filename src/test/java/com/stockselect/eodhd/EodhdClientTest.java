@@ -3,12 +3,15 @@ package com.stockselect.eodhd;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.stockselect.UpstreamApiException;
 import com.stockselect.config.EodhdProperties;
+import com.stockselect.config.WebClientConfig;
 import com.stockselect.eodhd.dto.Quote;
 import com.stockselect.health.VendorHealthTracker;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -81,6 +84,28 @@ class EodhdClientTest {
                     UpstreamApiException upstreamEx = (UpstreamApiException) ex;
                     assertThat(upstreamEx.vendor()).isEqualTo("EODHD");
                     assertThat(upstreamEx.status().value()).isEqualTo(429);
+                });
+        assertThat(healthTracker.outcome("EODHD")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
+    }
+
+    @Test
+    void mapsASlowVendorResponseToAGatewayTimeoutUpstreamExceptionAndRecordsFailure() {
+        wireMock.stubFor(get(urlPathEqualTo("/api/real-time/AAPL"))
+                .willReturn(okJson("{}").withFixedDelay(500)));
+
+        EodhdProperties properties = new EodhdProperties(wireMock.baseUrl(), "test-token");
+        WebClient webClient = WebClient.builder()
+                .baseUrl(properties.baseUrl())
+                .clientConnector(WebClientConfig.timeoutConnector(Duration.ofSeconds(5), Duration.ofMillis(100)))
+                .build();
+        EodhdClient client = new EodhdClient(webClient, properties, healthTracker);
+
+        assertThatThrownBy(() -> client.getQuote("AAPL").block())
+                .isInstanceOf(UpstreamApiException.class)
+                .satisfies(ex -> {
+                    UpstreamApiException upstreamEx = (UpstreamApiException) ex;
+                    assertThat(upstreamEx.vendor()).isEqualTo("EODHD");
+                    assertThat(upstreamEx.status().value()).isEqualTo(504);
                 });
         assertThat(healthTracker.outcome("EODHD")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
     }

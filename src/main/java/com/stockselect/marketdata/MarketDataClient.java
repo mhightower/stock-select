@@ -6,8 +6,10 @@ import com.stockselect.marketdata.dto.OptionsChainResponse;
 import com.stockselect.strategy.OptionContract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 
@@ -65,6 +67,8 @@ public class MarketDataClient {
                 .doOnSuccess(response -> healthTracker.recordSuccess(VENDOR))
                 .onErrorMap(WebClientResponseException.class,
                         ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
+                .onErrorMap(WebClientRequestException.class,
+                        ex -> new UpstreamApiException(VENDOR, HttpStatus.GATEWAY_TIMEOUT, ex))
                 .doOnError(UpstreamApiException.class, ex -> healthTracker.recordFailure(VENDOR, ex.getMessage()))
                 .flatMapMany(MarketDataClient::toContracts);
     }

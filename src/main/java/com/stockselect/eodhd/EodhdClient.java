@@ -4,8 +4,10 @@ import com.stockselect.UpstreamApiException;
 import com.stockselect.config.EodhdProperties;
 import com.stockselect.eodhd.dto.Quote;
 import com.stockselect.health.VendorHealthTracker;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
@@ -35,6 +37,8 @@ public class EodhdClient {
                 .doOnSuccess(quote -> healthTracker.recordSuccess(VENDOR))
                 .onErrorMap(WebClientResponseException.class,
                         ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
+                .onErrorMap(WebClientRequestException.class,
+                        ex -> new UpstreamApiException(VENDOR, HttpStatus.GATEWAY_TIMEOUT, ex))
                 .doOnError(UpstreamApiException.class, ex -> healthTracker.recordFailure(VENDOR, ex.getMessage()));
     }
 }

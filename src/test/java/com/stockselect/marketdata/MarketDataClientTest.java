@@ -2,6 +2,7 @@ package com.stockselect.marketdata;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.stockselect.UpstreamApiException;
+import com.stockselect.config.WebClientConfig;
 import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.strategy.OptionContract;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -175,5 +177,31 @@ class MarketDataClientTest {
         client().getOptionsChain("AAPL").blockLast();
 
         assertThat(healthTracker.rateLimitRemaining("MarketData.app")).isEqualTo(7);
+    }
+
+    @Test
+    void mapsASlowVendorResponseToAGatewayTimeoutUpstreamExceptionAndRecordsFailure() {
+        wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
+                .willReturn(okJson("""
+                        { "s": "ok" }
+                        """).withFixedDelay(500)));
+
+        WebClient webClient = WebClient.builder()
+                .baseUrl(wireMock.baseUrl())
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                .clientConnector(WebClientConfig.timeoutConnector(Duration.ofSeconds(5), Duration.ofMillis(100)))
+                .build();
+        MarketDataClient client = new MarketDataClient(webClient, healthTracker);
+
+        Flux<OptionContract> contracts = client.getOptionsChain("AAPL");
+
+        assertThatThrownBy(contracts::blockLast)
+                .isInstanceOf(UpstreamApiException.class)
+                .satisfies(ex -> {
+                    UpstreamApiException upstreamEx = (UpstreamApiException) ex;
+                    assertThat(upstreamEx.vendor()).isEqualTo("MarketData.app");
+                    assertThat(upstreamEx.status().value()).isEqualTo(504);
+                });
+        assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
     }
 }
