@@ -138,7 +138,7 @@ class ScreeningServiceTest {
             when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.empty());
             ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-            service.screen("AAPL", "jade-lizard");
+            service.screen("aapl.us", "jade-lizard");
 
             ILoggingEvent event = appender.list.get(appender.list.size() - 1);
             Map<String, String> fields = event.getKeyValuePairs().stream()

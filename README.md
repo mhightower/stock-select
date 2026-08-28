@@ -74,6 +74,18 @@ health check polled every few seconds would burn through that on its own.
 A vendor shows `UNKNOWN` until the app has actually talked to it at least
 once.
 
+## Metrics
+
+```bash
+curl "http://localhost:8080/actuator/prometheus"
+```
+
+Prometheus-format scrape endpoint: screen request counts and latency (by
+strategy and success/failure), vendor call counts (by vendor and
+success/failure), and MarketData.app's rate-limit-remaining as a live
+gauge. See `CLAUDE.md`'s Observability section for the full metric/tag
+list.
+
 ## Testing
 
 ```bash

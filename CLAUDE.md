@@ -175,6 +175,43 @@ both Maven and GitHub Actions dependency updates.
 - `web/RootController` — `GET /` returns a small JSON blurb pointing at the
   real endpoint, instead of a 404.
 
+## Observability
+
+`GET /health` stays at the root path (see `health/CLAUDE.md` for why);
+the rest of the ops surface lives under `/actuator`:
+
+```bash
+curl http://localhost:8080/actuator/prometheus   # Prometheus scrape format
+curl http://localhost:8080/actuator/metrics      # JSON list of available metric names
+curl http://localhost:8080/actuator/info         # build/app info
+```
+
+`management.endpoints.web.exposure.include` in `application.yml` is an
+explicit allowlist (`health, prometheus, metrics, info`), not `*`.
+
+**Business metrics** (`stockselect.*` namespace):
+
+| Metric | Type | Tags |
+|---|---|---|
+| `stockselect.screen.requests` | Counter | `strategy`, `outcome` (`success`/`failure`) |
+| `stockselect.screen.latency` | Timer | `strategy`, `outcome` |
+| `stockselect.vendor.calls` | Counter | `vendor` (`EODHD`/`MarketData.app`), `outcome` |
+| `stockselect.vendor.ratelimit.remaining` | Gauge | `vendor` |
+
+`strategy` is never the raw user-supplied path segment — an unknown
+strategy name is tagged `strategy=unknown` instead of echoing arbitrary
+input, to keep the Prometheus label cardinality bounded.
+
+**Structured logging:** `ScreeningService` logs one line per completed
+request (`strategy`, `symbol`, `status`, `latencyMs`); `EodhdClient`/
+`MarketDataClient` each log one line per vendor call (`vendor`, `status`,
+`latencyMs`). Fields are attached via SLF4J's fluent `addKeyValue` API,
+not MDC — MDC doesn't reliably propagate across this app's
+virtual-thread-per-request executor (`ScreeningService`) or the vendor
+clients' Reactor/Netty callback threads where these calls happen.
+`logging.pattern.console` in `application.yml` renders them via
+Logback's `%kvp` token.
+
 ## Commit messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) for the

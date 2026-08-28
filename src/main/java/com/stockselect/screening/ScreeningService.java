@@ -54,20 +54,24 @@ public class ScreeningService {
 
         long startNanos = System.nanoTime();
         String outcome = "success";
+        String normalizedSymbol = symbol;
         try {
             // MarketData.app rejects exchange-suffixed symbols (e.g. "AAPL.US") outright; EODHD
             // accepts the bare ticker fine, so normalize to bare for both clients.
-            String normalizedSymbol = symbol.toUpperCase().replaceFirst("\\.US$", "");
+            normalizedSymbol = symbol.toUpperCase().replaceFirst("\\.US$", "");
 
             List<OptionContract> optionsChain;
             List<String> warnings = new ArrayList<>();
             double underlyingPrice;
             // The chain and quote calls are independent, so fetch them concurrently on their own
             // virtual threads instead of serially — halves the vendor latency on the happy path.
+            // normalizedSymbol is reassigned above (not effectively final), so the lambdas below
+            // need their own final copy to capture.
+            final String vendorSymbol = normalizedSymbol;
             try (var vthreads = Executors.newVirtualThreadPerTaskExecutor()) {
                 Future<List<OptionContract>> chainFuture =
-                        vthreads.submit(() -> marketDataClient.getOptionsChain(normalizedSymbol).collectList().block());
-                Future<Quote> quoteFuture = vthreads.submit(() -> eodhdClient.getQuote(normalizedSymbol).block());
+                        vthreads.submit(() -> marketDataClient.getOptionsChain(vendorSymbol).collectList().block());
+                Future<Quote> quoteFuture = vthreads.submit(() -> eodhdClient.getQuote(vendorSymbol).block());
 
                 optionsChain = unwrap(chainFuture);
                 underlyingPrice = resolveUnderlyingPrice(quoteFuture, optionsChain, warnings);
@@ -91,7 +95,7 @@ public class ScreeningService {
                     .record(elapsed);
             log.atInfo()
                     .addKeyValue("strategy", strategyName)
-                    .addKeyValue("symbol", symbol)
+                    .addKeyValue("symbol", normalizedSymbol)
                     .addKeyValue("status", outcome)
                     .addKeyValue("latencyMs", elapsed.toMillis())
                     .log("screen completed");
