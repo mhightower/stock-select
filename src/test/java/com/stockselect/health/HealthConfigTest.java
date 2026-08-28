@@ -61,4 +61,15 @@ class HealthConfigTest {
 
         assertThat(health.getStatus()).isEqualTo(Status.UP);
     }
+
+    @Test
+    void includesRateLimitRemainingInHealthDetails() {
+        tracker.recordRateLimit(MarketDataClient.VENDOR, 3);
+        tracker.recordSuccess(MarketDataClient.VENDOR);
+
+        Health health = healthConfig.marketData(tracker).health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsEntry("rateLimitRemaining", 3);
+    }
 }

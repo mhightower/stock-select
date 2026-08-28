@@ -14,8 +14,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
@@ -142,5 +141,39 @@ class MarketDataClientTest {
                     assertThat(upstreamEx.status().value()).isEqualTo(429);
                 });
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
+    }
+
+    @Test
+    void extractsAndRecordsRateLimitRemainingFromResponseHeader() {
+        // Rate limit headers are captured via ExchangeFilterFunction regardless of response status
+        wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
+                .withHeader("Authorization", equalTo("Bearer test-token"))
+                .willReturn(okJson("""
+                        {
+                          "s": "ok",
+                          "optionSymbol": ["AAPL260918C00110000"],
+                          "underlying": ["AAPL"],
+                          "expiration": [1789156800],
+                          "side": ["call"],
+                          "strike": [110],
+                          "underlyingPrice": [100.5],
+                          "dte": [45],
+                          "bid": [5.10],
+                          "ask": [5.40],
+                          "mid": [5.25],
+                          "volume": [120],
+                          "openInterest": [3400],
+                          "iv": [0.28],
+                          "delta": [0.16],
+                          "gamma": [0.02],
+                          "theta": [-0.05],
+                          "vega": [0.12]
+                        }
+                        """)
+                        .withHeader("x-api-ratelimit-remaining", "7")));
+
+        client().getOptionsChain("AAPL").blockLast();
+
+        assertThat(healthTracker.rateLimitRemaining("MarketData.app")).isEqualTo(7);
     }
 }

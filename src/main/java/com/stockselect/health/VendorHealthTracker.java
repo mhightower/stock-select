@@ -17,17 +17,17 @@ public class VendorHealthTracker {
 
     public enum Outcome { UP, DOWN, UNKNOWN }
 
-    private record Record(Outcome outcome, String detail, Instant checkedAt) {
+    private record Record(Outcome outcome, String detail, Instant checkedAt, Integer rateLimitRemaining) {
     }
 
     private final ConcurrentHashMap<String, AtomicReference<Record>> records = new ConcurrentHashMap<>();
 
     public void recordSuccess(String vendor) {
-        recordFor(vendor).set(new Record(Outcome.UP, null, Instant.now()));
+        recordFor(vendor).updateAndGet(r -> new Record(Outcome.UP, null, Instant.now(), r.rateLimitRemaining()));
     }
 
     public void recordFailure(String vendor, String detail) {
-        recordFor(vendor).set(new Record(Outcome.DOWN, detail, Instant.now()));
+        recordFor(vendor).set(new Record(Outcome.DOWN, detail, Instant.now(), null));
     }
 
     public Outcome outcome(String vendor) {
@@ -43,8 +43,16 @@ public class VendorHealthTracker {
         return recordFor(vendor).get().checkedAt();
     }
 
+    public void recordRateLimit(String vendor, int remaining) {
+        recordFor(vendor).updateAndGet(r -> new Record(r.outcome(), r.detail(), r.checkedAt(), remaining));
+    }
+
+    public Integer rateLimitRemaining(String vendor) {
+        return recordFor(vendor).get().rateLimitRemaining();
+    }
+
     private AtomicReference<Record> recordFor(String vendor) {
         return records.computeIfAbsent(vendor,
-                v -> new AtomicReference<>(new Record(Outcome.UNKNOWN, null, null)));
+                v -> new AtomicReference<>(new Record(Outcome.UNKNOWN, null, null, null)));
     }
 }

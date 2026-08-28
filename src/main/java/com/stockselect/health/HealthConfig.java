@@ -45,6 +45,10 @@ public class HealthConfig {
         if (tracker.detail(vendor) != null) {
             builder.withDetail("error", tracker.detail(vendor));
         }
+        Integer rateLimitRemaining = tracker.rateLimitRemaining(vendor);
+        if (rateLimitRemaining != null) {
+            builder.withDetail("rateLimitRemaining", rateLimitRemaining);
+        }
         return builder.build();
     }
 }

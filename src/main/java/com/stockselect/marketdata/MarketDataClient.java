@@ -4,6 +4,8 @@ import com.stockselect.UpstreamApiException;
 import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.marketdata.dto.OptionsChainResponse;
 import com.stockselect.strategy.OptionContract;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -18,6 +20,8 @@ import java.util.List;
 @Component
 public class MarketDataClient {
 
+    private static final Logger log = LoggerFactory.getLogger(MarketDataClient.class);
+
     public static final String VENDOR = "MarketData.app";
     private static final ZoneId OPTIONS_EXPIRATION_ZONE = ZoneId.of("America/New_York");
     // Matches the 30-60 DTE window shared by every current strategy, plus a small buffer — MarketData.app
@@ -30,7 +34,19 @@ public class MarketDataClient {
     private final VendorHealthTracker healthTracker;
 
     public MarketDataClient(WebClient marketDataWebClient, VendorHealthTracker healthTracker) {
-        this.webClient = marketDataWebClient;
+        this.webClient = marketDataWebClient.mutate()
+                .filter((request, next) -> next.exchange(request)
+                        .doOnNext(response -> {
+                            String rateLimitHeader = response.headers().asHttpHeaders().getFirst("x-api-ratelimit-remaining");
+                            if (rateLimitHeader != null) {
+                                try {
+                                    healthTracker.recordRateLimit(VENDOR, Integer.parseInt(rateLimitHeader));
+                                } catch (NumberFormatException e) {
+                                    log.warn("Failed to parse {} rate limit header: {}", VENDOR, rateLimitHeader);
+                                }
+                            }
+                        }))
+                .build();
         this.healthTracker = healthTracker;
     }
 

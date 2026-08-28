@@ -43,4 +43,34 @@ class VendorHealthTrackerTest {
         assertThat(tracker.outcome("EODHD")).isEqualTo(VendorHealthTracker.Outcome.UP);
         assertThat(tracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
     }
+
+    @Test
+    void recordsRateLimitRemaining() {
+        tracker.recordRateLimit("MarketData.app", 5);
+
+        assertThat(tracker.rateLimitRemaining("MarketData.app")).isEqualTo(5);
+    }
+
+    @Test
+    void preservesRateLimitAcrossSuccessRecords() {
+        tracker.recordRateLimit("MarketData.app", 10);
+        tracker.recordSuccess("MarketData.app");
+
+        assertThat(tracker.rateLimitRemaining("MarketData.app")).isEqualTo(10);
+        assertThat(tracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.UP);
+    }
+
+    @Test
+    void rateLimitIsTrackedPerVendor() {
+        tracker.recordRateLimit("EODHD", 20);
+        tracker.recordRateLimit("MarketData.app", 5);
+
+        assertThat(tracker.rateLimitRemaining("EODHD")).isEqualTo(20);
+        assertThat(tracker.rateLimitRemaining("MarketData.app")).isEqualTo(5);
+    }
+
+    @Test
+    void rateLimitRemainingIsNullBeforeRecorded() {
+        assertThat(tracker.rateLimitRemaining("MarketData.app")).isNull();
+    }
 }
