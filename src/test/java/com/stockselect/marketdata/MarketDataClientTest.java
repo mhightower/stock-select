@@ -1,12 +1,17 @@
 package com.stockselect.marketdata;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.stockselect.UpstreamApiException;
 import com.stockselect.config.WebClientConfig;
 import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.strategy.OptionContract;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -15,6 +20,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -37,13 +44,14 @@ class MarketDataClientTest {
             .build();
 
     private final VendorHealthTracker healthTracker = new VendorHealthTracker();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     private MarketDataClient client() {
         WebClient webClient = WebClient.builder()
                 .baseUrl(wireMock.baseUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .build();
-        return new MarketDataClient(webClient, healthTracker);
+        return new MarketDataClient(webClient, healthTracker, meterRegistry);
     }
 
     @Test
@@ -94,6 +102,8 @@ class MarketDataClientTest {
         assertThat(put.strike()).isEqualTo(90.0);
         assertThat(put.delta()).isEqualTo(-0.16);
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.UP);
+        assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "MarketData.app", "outcome", "success").count())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -143,6 +153,8 @@ class MarketDataClientTest {
                     assertThat(upstreamEx.status().value()).isEqualTo(429);
                 });
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
+        assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "MarketData.app", "outcome", "failure").count())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -191,7 +203,7 @@ class MarketDataClientTest {
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .clientConnector(WebClientConfig.timeoutConnector(Duration.ofSeconds(5), Duration.ofMillis(100)))
                 .build();
-        MarketDataClient client = new MarketDataClient(webClient, healthTracker);
+        MarketDataClient client = new MarketDataClient(webClient, healthTracker, meterRegistry);
 
         Flux<OptionContract> contracts = client.getOptionsChain("AAPL");
 
@@ -203,5 +215,45 @@ class MarketDataClientTest {
                     assertThat(upstreamEx.status().value()).isEqualTo(504);
                 });
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
+        assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "MarketData.app", "outcome", "failure").count())
+                .isEqualTo(1.0);
+    }
+
+    @Test
+    void logsStructuredFieldsForEachVendorCall() {
+        wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
+                .willReturn(okJson("""
+                        { "s": "no_data", "errmsg": "Symbol not found." }
+                        """)));
+
+        Logger logbackLogger = (Logger) LoggerFactory.getLogger(MarketDataClient.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logbackLogger.addAppender(appender);
+        try {
+            client().getOptionsChain("AAPL").collectList().block();
+
+            ILoggingEvent event = appender.list.get(appender.list.size() - 1);
+            Map<String, String> fields = event.getKeyValuePairs().stream()
+                    .collect(Collectors.toMap(kv -> kv.key, kv -> String.valueOf(kv.value)));
+            assertThat(fields).containsEntry("vendor", "MarketData.app");
+            assertThat(fields).containsEntry("status", "success");
+            assertThat(fields).containsKey("latencyMs");
+        } finally {
+            logbackLogger.detachAppender(appender);
+        }
+    }
+
+    @Test
+    void ratelimitGaugeReflectsHealthTrackerValue() {
+        client();
+
+        assertThat(meterRegistry.get("stockselect.vendor.ratelimit.remaining")
+                .tag("vendor", "MarketData.app").gauge().value()).isNaN();
+
+        healthTracker.recordRateLimit("MarketData.app", 42);
+
+        assertThat(meterRegistry.get("stockselect.vendor.ratelimit.remaining")
+                .tag("vendor", "MarketData.app").gauge().value()).isEqualTo(42.0);
     }
 }
