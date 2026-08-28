@@ -4,6 +4,7 @@ import com.stockselect.config.MarketDataProperties;
 import com.stockselect.config.WebClientConfig;
 import com.stockselect.health.VendorHealthTracker;
 import com.stockselect.strategy.OptionContract;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,7 +25,7 @@ class MarketDataClientIT {
         MarketDataProperties properties = new MarketDataProperties(
                 "https://api.marketdata.app", System.getenv("MARKETDATA_API_KEY"));
         WebClient webClient = new WebClientConfig().marketDataWebClient(properties);
-        MarketDataClient client = new MarketDataClient(webClient, new VendorHealthTracker());
+        MarketDataClient client = new MarketDataClient(webClient, new VendorHealthTracker(), new SimpleMeterRegistry());
 
         List<OptionContract> contracts = client.getOptionsChain("AAPL").collectList().block();
 
