@@ -28,14 +28,14 @@ public class ApiExceptionHandler {
     @ExceptionHandler(UpstreamApiException.class)
     public ResponseEntity<ErrorResponse> handleUpstreamError(UpstreamApiException ex) {
         if (ex.status().value() == 429) {
-            String message = ex.vendor() + " rate limit exceeded — try again later.";
+            String message = "Upstream data provider rate limit exceeded — try again later.";
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(new ErrorResponse(message));
         }
         if (ex.status().value() == 401 || ex.status().value() == 403) {
-            String message = ex.vendor() + " rejected the request — check the API key and plan entitlements.";
+            String message = "Upstream data provider rejected the request — check the API key and plan entitlements.";
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErrorResponse(message));
         }
-        String message = ex.vendor() + " request failed (" + ex.status().value() + ").";
+        String message = "Upstream data provider request failed (" + ex.status().value() + ").";
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErrorResponse(message));
     }
 

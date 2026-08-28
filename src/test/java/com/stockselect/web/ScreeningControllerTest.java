@@ -78,7 +78,7 @@ class ScreeningControllerTest {
 
         mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.error").value("MarketData.app rate limit exceeded — try again later."));
+                .andExpect(jsonPath("$.error").value("Upstream data provider rate limit exceeded — try again later."));
     }
 
     @Test
@@ -89,6 +89,17 @@ class ScreeningControllerTest {
 
         mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.error").value("EODHD rejected the request — check the API key and plan entitlements."));
+                .andExpect(jsonPath("$.error").value("Upstream data provider rejected the request — check the API key and plan entitlements."));
+    }
+
+    @Test
+    void returnsBadGatewayWithAGenericMessageForOtherVendorFailures() throws Exception {
+        when(screeningService.screen("AAPL", "jade-lizard"))
+                .thenThrow(new UpstreamApiException("MarketData.app", HttpStatus.INTERNAL_SERVER_ERROR,
+                        new RuntimeException("500 Internal Server Error")));
+
+        mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.error").value("Upstream data provider request failed (500)."));
     }
 }
