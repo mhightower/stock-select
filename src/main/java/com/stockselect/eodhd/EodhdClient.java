@@ -5,6 +5,7 @@ import com.stockselect.config.EodhdProperties;
 import com.stockselect.eodhd.dto.Quote;
 import com.stockselect.health.VendorHealthTracker;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -62,6 +63,15 @@ public class EodhdClient {
     private void recordVendorCall(String outcome, long startNanos, String requestId) {
         Duration elapsed = Duration.ofNanos(System.nanoTime() - startNanos);
         meterRegistry.counter("stockselect.vendor.calls", "vendor", VENDOR, "outcome", outcome).increment();
+        Timer.builder("stockselect.vendor.latency")
+                .tag("vendor", VENDOR)
+                .tag("outcome", outcome)
+                .publishPercentileHistogram()
+                .serviceLevelObjectives(
+                        Duration.ofMillis(250), Duration.ofMillis(500),
+                        Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(5))
+                .register(meterRegistry)
+                .record(elapsed);
         log.atInfo()
                 .addKeyValue("vendor", VENDOR)
                 .addKeyValue("status", outcome)

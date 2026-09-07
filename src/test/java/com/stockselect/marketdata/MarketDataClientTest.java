@@ -104,6 +104,8 @@ class MarketDataClientTest {
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.UP);
         assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "MarketData.app", "outcome", "success").count())
                 .isEqualTo(1.0);
+        assertThat(meterRegistry.timer("stockselect.vendor.latency", "vendor", "MarketData.app", "outcome", "success").count())
+                .isEqualTo(1L);
     }
 
     @Test
@@ -155,6 +157,8 @@ class MarketDataClientTest {
         assertThat(healthTracker.outcome("MarketData.app")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
         assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "MarketData.app", "outcome", "failure").count())
                 .isEqualTo(1.0);
+        assertThat(meterRegistry.timer("stockselect.vendor.latency", "vendor", "MarketData.app", "outcome", "failure").count())
+                .isEqualTo(1L);
     }
 
     @Test

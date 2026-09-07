@@ -11,6 +11,7 @@ import com.stockselect.strategy.OptionContract;
 import com.stockselect.strategy.StrategyContext;
 import com.stockselect.strategy.TradeCandidate;
 import com.stockselect.strategy.TradeStrategy;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -151,6 +152,21 @@ class ScreeningServiceTest {
         } finally {
             logbackLogger.detachAppender(appender);
         }
+    }
+
+    @Test
+    void publishesLatencyHistogramBucketsForScreenLatency() {
+        Quote quote = new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31);
+        when(eodhdClient.getQuote("AAPL", "test-request-id")).thenReturn(Mono.just(quote));
+        when(marketDataClient.getOptionsChain("AAPL", "test-request-id")).thenReturn(Flux.empty());
+        ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
+
+        service.screen("AAPL", "jade-lizard", "test-request-id");
+
+        HistogramSnapshot snapshot = meterRegistry
+                .timer("stockselect.screen.latency", "strategy", "jade-lizard", "outcome", "success")
+                .takeSnapshot();
+        assertThat(snapshot.histogramCounts()).isNotEmpty();
     }
 
     private record StubStrategy(String name) implements TradeStrategy {
