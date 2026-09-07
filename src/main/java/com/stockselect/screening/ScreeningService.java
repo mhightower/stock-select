@@ -91,6 +91,10 @@ public class ScreeningService {
             Timer.builder("stockselect.screen.latency")
                     .tag("strategy", strategyName)
                     .tag("outcome", outcome)
+                    .publishPercentileHistogram()
+                    .serviceLevelObjectives(
+                            Duration.ofMillis(250), Duration.ofMillis(500),
+                            Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(5))
                     .register(meterRegistry)
                     .record(elapsed);
             log.atInfo()

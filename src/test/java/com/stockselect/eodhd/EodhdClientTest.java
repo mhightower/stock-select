@@ -79,6 +79,8 @@ class EodhdClientTest {
         assertThat(healthTracker.outcome("EODHD")).isEqualTo(VendorHealthTracker.Outcome.UP);
         assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "EODHD", "outcome", "success").count())
                 .isEqualTo(1.0);
+        assertThat(meterRegistry.timer("stockselect.vendor.latency", "vendor", "EODHD", "outcome", "success").count())
+                .isEqualTo(1L);
     }
 
     @Test
@@ -98,6 +100,8 @@ class EodhdClientTest {
         assertThat(healthTracker.outcome("EODHD")).isEqualTo(VendorHealthTracker.Outcome.DOWN);
         assertThat(meterRegistry.counter("stockselect.vendor.calls", "vendor", "EODHD", "outcome", "failure").count())
                 .isEqualTo(1.0);
+        assertThat(meterRegistry.timer("stockselect.vendor.latency", "vendor", "EODHD", "outcome", "failure").count())
+                .isEqualTo(1L);
     }
 
     @Test
