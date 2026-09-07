@@ -1,7 +1,7 @@
 # marketdata/ — MarketData.app option chain client
 
-`MarketDataClient.getOptionsChain(symbol)` requests a `from`/`to` date
-range and maps the response into `OptionContract`.
+`MarketDataClient.getOptionsChain(symbol, requestId)` requests a `from`/`to`
+date range and maps the response into `OptionContract`.
 
 **Quota is metered per contract returned, not per HTTP call** — confirmed
 live (2026-08-21): a pre-batch check showed 9,725/10,000 remaining, and

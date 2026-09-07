@@ -81,9 +81,11 @@ curl "http://localhost:8080/actuator/prometheus"
 ```
 
 Prometheus-format scrape endpoint: screen request counts and latency (by
-strategy and success/failure), vendor call counts (by vendor and
-success/failure), and MarketData.app's rate-limit-remaining as a live
-gauge. See `CLAUDE.md`'s Observability section for the full metric/tag
+strategy and success/failure), vendor call counts and latency (by vendor
+and success/failure) with percentile/SLO histogram buckets, and
+MarketData.app's rate-limit-remaining as a live gauge. Every response
+also carries an `X-Request-Id` header for correlating a request across
+logs. See `CLAUDE.md`'s Observability section for the full metric/tag
 list.
 
 ## Testing
