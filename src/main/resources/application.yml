@@ -90,7 +90,7 @@ logging:
     '[com.stockselect]': INFO
   pattern:
     # %kvp renders the SLF4J fluent addKeyValue() fields added in later tasks (strategy,
-    # symbol, vendor, status, latencyMs) — silently dropped by Boot's default colored
+    # symbol, vendor, status, latencyMs, requestId) — silently dropped by Boot's default colored
     # pattern otherwise. ANSI color codes are dropped in the process, which is fine for
     # containerized log output that usually gets stripped/reformatted by a log collector.
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %-40.40logger{39} : %m %kvp%n"

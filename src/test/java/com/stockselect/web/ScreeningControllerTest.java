@@ -70,7 +70,8 @@ class ScreeningControllerTest {
 
         mockMvc.perform(get("/api/screen/iron-condor/AAPL"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Unknown strategy: iron-condor"));
+                .andExpect(jsonPath("$.error").value("Unknown strategy: iron-condor"))
+                .andExpect(header().exists("X-Request-Id"));
     }
 
     @Test

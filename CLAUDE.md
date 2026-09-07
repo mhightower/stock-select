@@ -143,7 +143,7 @@ both Maven and GitHub Actions dependency updates.
 `TradeStrategy` bean (picks legs, prices them, returns `TradeCandidate`s).
 
 - `eodhd/` — talking to EODHD for the quote only. `EodhdClient` wraps a
-  `WebClient` and exposes `getQuote(symbol)` (flat JSON from
+  `WebClient` and exposes `getQuote(symbol, requestId)` (flat JSON from
   `/api/real-time/{symbol}`).
 - `marketdata/` — talking to MarketData.app for the option chain. See
   `marketdata/CLAUDE.md` for the wire format, DTE-window/quota rationale,
@@ -171,9 +171,22 @@ both Maven and GitHub Actions dependency updates.
 - `screening/ScreeningService` — see `screening/CLAUDE.md` for the
   blocking seam and the EODHD-optional/MarketData-required fallback logic.
 - `web/ScreeningController` — thin: one endpoint, `{strategy}/{symbol}`
-  path variables map directly onto `ScreeningService.screen(symbol, strategyName)`.
+  path variables plus the request's correlation ID (see
+  `web/CorrelationIdFilter` below) map directly onto
+  `ScreeningService.screen(symbol, strategyName, requestId)`.
 - `web/RootController` — `GET /` returns a small JSON blurb pointing at the
   real endpoint, instead of a 404.
+- `web/CorrelationIdFilter` — a servlet filter (`@Component`, no explicit
+  registration needed) that assigns every request an `X-Request-Id`:
+  honors one the caller supplies via the `X-Request-Id` request header if
+  present and non-blank, generates a `UUID` otherwise. Always echoes the
+  result as the `X-Request-Id` response header — including error
+  responses, since the header is set before the rest of the request is
+  handled — and exposes it as a `requestId` request attribute for
+  `ScreeningController` to read. Threaded through as an explicit
+  `requestId` parameter, never MDC (MDC doesn't reliably propagate across
+  this app's virtual-thread executor or the vendor clients' Reactor/Netty
+  callback threads — see Structured logging below).
 
 ## Observability
 
@@ -196,21 +209,31 @@ explicit allowlist (`health, prometheus, metrics, info`), not `*`.
 | `stockselect.screen.requests` | Counter | `strategy`, `outcome` (`success`/`failure`) |
 | `stockselect.screen.latency` | Timer | `strategy`, `outcome` |
 | `stockselect.vendor.calls` | Counter | `vendor` (`EODHD`/`MarketData.app`), `outcome` |
+| `stockselect.vendor.latency` | Timer | `vendor`, `outcome` |
 | `stockselect.vendor.ratelimit.remaining` | Gauge | `vendor` |
+
+`stockselect.screen.latency` and `stockselect.vendor.latency` both publish
+a percentile histogram with SLO buckets at 250ms/500ms/1s/2s/5s
+(`.publishPercentileHistogram()` + `.serviceLevelObjectives(...)`), not
+just count/sum.
 
 `strategy` is never the raw user-supplied path segment — an unknown
 strategy name is tagged `strategy=unknown` instead of echoing arbitrary
 input, to keep the Prometheus label cardinality bounded.
 
 **Structured logging:** `ScreeningService` logs one line per completed
-request (`strategy`, `symbol`, `status`, `latencyMs`); `EodhdClient`/
-`MarketDataClient` each log one line per vendor call (`vendor`, `status`,
-`latencyMs`). Fields are attached via SLF4J's fluent `addKeyValue` API,
-not MDC — MDC doesn't reliably propagate across this app's
-virtual-thread-per-request executor (`ScreeningService`) or the vendor
-clients' Reactor/Netty callback threads where these calls happen.
-`logging.pattern.console` in `application.yml` renders them via
-Logback's `%kvp` token.
+request (`strategy`, `symbol`, `status`, `latencyMs`, `requestId`);
+`EodhdClient`/`MarketDataClient` each log one line per vendor call
+(`vendor`, `status`, `latencyMs`, `requestId`). `requestId` is the
+correlation ID `CorrelationIdFilter` assigned to the request (see
+`web/CorrelationIdFilter` above) — it's what ties a screen-completion log
+line to the vendor-call log lines it triggered. Fields are attached via
+SLF4J's fluent `addKeyValue` API, not MDC — MDC doesn't reliably
+propagate across this app's virtual-thread-per-request executor
+(`ScreeningService`) or the vendor clients' Reactor/Netty callback
+threads where these calls happen, so `requestId` is passed as an
+explicit method parameter instead. `logging.pattern.console` in
+`application.yml` renders them via Logback's `%kvp` token.
 
 ## Commit messages
 
