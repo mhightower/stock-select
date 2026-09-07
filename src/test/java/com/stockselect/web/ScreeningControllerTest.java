@@ -13,8 +13,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,7 +36,7 @@ class ScreeningControllerTest {
                 "jade-lizard", "AAPL.US", "USD", 193.5, null,
                 200.0, null, 180.0, 175.0, 0.16, -0.15,
                 1.5, 5.0, 3.5, 201.5, 178.5, "CUSTOM AAPL.US 100 ...");
-        when(screeningService.screen("AAPL", "jade-lizard"))
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class)))
                 .thenReturn(new ScreeningResult(List.of(candidate), List.of()));
 
         mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
@@ -51,7 +54,7 @@ class ScreeningControllerTest {
                 "jade-lizard", "AAPL", "USD", 201.75, null,
                 200.0, null, 180.0, 175.0, 0.16, -0.15,
                 1.5, 5.0, 3.5, 201.5, 178.5, "CUSTOM AAPL 100 ...");
-        when(screeningService.screen("AAPL", "jade-lizard")).thenReturn(new ScreeningResult(
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class))).thenReturn(new ScreeningResult(
                 List.of(candidate), List.of("EODHD unavailable (...); using MarketData.app's price instead.")));
 
         mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
@@ -62,7 +65,7 @@ class ScreeningControllerTest {
 
     @Test
     void returnsBadRequestForAnUnknownStrategy() throws Exception {
-        when(screeningService.screen("AAPL", "iron-condor"))
+        when(screeningService.screen(eq("AAPL"), eq("iron-condor"), any(String.class)))
                 .thenThrow(new IllegalArgumentException("Unknown strategy: iron-condor"));
 
         mockMvc.perform(get("/api/screen/iron-condor/AAPL"))
@@ -72,7 +75,7 @@ class ScreeningControllerTest {
 
     @Test
     void returnsTooManyRequestsWhenAVendorRateLimitsUs() throws Exception {
-        when(screeningService.screen("AAPL", "jade-lizard"))
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class)))
                 .thenThrow(new UpstreamApiException("MarketData.app", HttpStatus.TOO_MANY_REQUESTS,
                         new RuntimeException("429 Too Many Requests")));
 
@@ -83,7 +86,7 @@ class ScreeningControllerTest {
 
     @Test
     void returnsBadGatewayWhenAVendorRejectsTheApiKey() throws Exception {
-        when(screeningService.screen("AAPL", "jade-lizard"))
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class)))
                 .thenThrow(new UpstreamApiException("EODHD", HttpStatus.FORBIDDEN,
                         new RuntimeException("403 Forbidden")));
 
@@ -94,12 +97,40 @@ class ScreeningControllerTest {
 
     @Test
     void returnsBadGatewayWithAGenericMessageForOtherVendorFailures() throws Exception {
-        when(screeningService.screen("AAPL", "jade-lizard"))
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class)))
                 .thenThrow(new UpstreamApiException("MarketData.app", HttpStatus.INTERNAL_SERVER_ERROR,
                         new RuntimeException("500 Internal Server Error")));
 
         mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error").value("Upstream data provider request failed (500)."));
+    }
+
+    @Test
+    void includesAGeneratedCorrelationIdHeaderOnASuccessfulResponse() throws Exception {
+        TradeCandidate candidate = new TradeCandidate(
+                "jade-lizard", "AAPL.US", "USD", 193.5, null,
+                200.0, null, 180.0, 175.0, 0.16, -0.15,
+                1.5, 5.0, 3.5, 201.5, 178.5, "CUSTOM AAPL.US 100 ...");
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class)))
+                .thenReturn(new ScreeningResult(List.of(candidate), List.of()));
+
+        mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("X-Request-Id"));
+    }
+
+    @Test
+    void honorsAndPassesThroughAnInboundCorrelationId() throws Exception {
+        TradeCandidate candidate = new TradeCandidate(
+                "jade-lizard", "AAPL.US", "USD", 193.5, null,
+                200.0, null, 180.0, 175.0, 0.16, -0.15,
+                1.5, 5.0, 3.5, 201.5, 178.5, "CUSTOM AAPL.US 100 ...");
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), eq("caller-supplied-id")))
+                .thenReturn(new ScreeningResult(List.of(candidate), List.of()));
+
+        mockMvc.perform(get("/api/screen/jade-lizard/AAPL").header("X-Request-Id", "caller-supplied-id"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Request-Id", "caller-supplied-id"));
     }
 }

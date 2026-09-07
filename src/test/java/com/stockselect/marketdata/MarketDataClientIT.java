@@ -27,7 +27,7 @@ class MarketDataClientIT {
         WebClient webClient = new WebClientConfig().marketDataWebClient(properties);
         MarketDataClient client = new MarketDataClient(webClient, new VendorHealthTracker(), new SimpleMeterRegistry());
 
-        List<OptionContract> contracts = client.getOptionsChain("AAPL").collectList().block();
+        List<OptionContract> contracts = client.getOptionsChain("AAPL", "test-request-id").collectList().block();
 
         assertThat(contracts).isNotEmpty();
         OptionContract first = contracts.get(0);

@@ -36,7 +36,7 @@ public class EodhdClient {
         this.meterRegistry = meterRegistry;
     }
 
-    public Mono<Quote> getQuote(String symbol) {
+    public Mono<Quote> getQuote(String symbol, String requestId) {
         long startNanos = System.nanoTime();
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/real-time/{symbol}")
@@ -47,7 +47,7 @@ public class EodhdClient {
                 .bodyToMono(Quote.class)
                 .doOnSuccess(quote -> {
                     healthTracker.recordSuccess(VENDOR);
-                    recordVendorCall("success", startNanos);
+                    recordVendorCall("success", startNanos, requestId);
                 })
                 .onErrorMap(WebClientResponseException.class,
                         ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
@@ -55,17 +55,18 @@ public class EodhdClient {
                         ex -> new UpstreamApiException(VENDOR, HttpStatus.GATEWAY_TIMEOUT, ex))
                 .doOnError(UpstreamApiException.class, ex -> {
                     healthTracker.recordFailure(VENDOR, ex.getMessage());
-                    recordVendorCall("failure", startNanos);
+                    recordVendorCall("failure", startNanos, requestId);
                 });
     }
 
-    private void recordVendorCall(String outcome, long startNanos) {
+    private void recordVendorCall(String outcome, long startNanos, String requestId) {
         Duration elapsed = Duration.ofNanos(System.nanoTime() - startNanos);
         meterRegistry.counter("stockselect.vendor.calls", "vendor", VENDOR, "outcome", outcome).increment();
         log.atInfo()
                 .addKeyValue("vendor", VENDOR)
                 .addKeyValue("status", outcome)
                 .addKeyValue("latencyMs", elapsed.toMillis())
+                .addKeyValue("requestId", requestId)
                 .log("vendor call completed");
     }
 }

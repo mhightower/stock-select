@@ -42,7 +42,7 @@ public class ScreeningService {
         this.meterRegistry = meterRegistry;
     }
 
-    public ScreeningResult screen(String symbol, String strategyName) {
+    public ScreeningResult screen(String symbol, String strategyName, String requestId) {
         TradeStrategy strategy = strategiesByName.get(strategyName);
         if (strategy == null) {
             // "unknown" sentinel, never the raw strategyName — an arbitrary user-supplied path
@@ -70,8 +70,8 @@ public class ScreeningService {
             final String vendorSymbol = normalizedSymbol;
             try (var vthreads = Executors.newVirtualThreadPerTaskExecutor()) {
                 Future<List<OptionContract>> chainFuture =
-                        vthreads.submit(() -> marketDataClient.getOptionsChain(vendorSymbol).collectList().block());
-                Future<Quote> quoteFuture = vthreads.submit(() -> eodhdClient.getQuote(vendorSymbol).block());
+                        vthreads.submit(() -> marketDataClient.getOptionsChain(vendorSymbol, requestId).collectList().block());
+                Future<Quote> quoteFuture = vthreads.submit(() -> eodhdClient.getQuote(vendorSymbol, requestId).block());
 
                 optionsChain = unwrap(chainFuture);
                 underlyingPrice = resolveUnderlyingPrice(quoteFuture, optionsChain, warnings);
@@ -98,6 +98,7 @@ public class ScreeningService {
                     .addKeyValue("symbol", normalizedSymbol)
                     .addKeyValue("status", outcome)
                     .addKeyValue("latencyMs", elapsed.toMillis())
+                    .addKeyValue("requestId", requestId)
                     .log("screen completed");
         }
     }

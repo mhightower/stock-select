@@ -68,7 +68,7 @@ public class MarketDataClient {
     }
 
     /** Fetches every expiration within a ~25-65 DTE window, matching the DTE band every current strategy uses. */
-    public Flux<OptionContract> getOptionsChain(String symbol) {
+    public Flux<OptionContract> getOptionsChain(String symbol, String requestId) {
         LocalDate from = LocalDate.now().plusDays(CHAIN_WINDOW_START_DAYS);
         LocalDate to = LocalDate.now().plusDays(CHAIN_WINDOW_END_DAYS);
         long startNanos = System.nanoTime();
@@ -82,7 +82,7 @@ public class MarketDataClient {
                 .bodyToMono(OptionsChainResponse.class)
                 .doOnSuccess(response -> {
                     healthTracker.recordSuccess(VENDOR);
-                    recordVendorCall("success", startNanos);
+                    recordVendorCall("success", startNanos, requestId);
                 })
                 .onErrorMap(WebClientResponseException.class,
                         ex -> new UpstreamApiException(VENDOR, ex.getStatusCode(), ex))
@@ -90,18 +90,19 @@ public class MarketDataClient {
                         ex -> new UpstreamApiException(VENDOR, HttpStatus.GATEWAY_TIMEOUT, ex))
                 .doOnError(UpstreamApiException.class, ex -> {
                     healthTracker.recordFailure(VENDOR, ex.getMessage());
-                    recordVendorCall("failure", startNanos);
+                    recordVendorCall("failure", startNanos, requestId);
                 })
                 .flatMapMany(MarketDataClient::toContracts);
     }
 
-    private void recordVendorCall(String outcome, long startNanos) {
+    private void recordVendorCall(String outcome, long startNanos, String requestId) {
         Duration elapsed = Duration.ofNanos(System.nanoTime() - startNanos);
         meterRegistry.counter("stockselect.vendor.calls", "vendor", VENDOR, "outcome", outcome).increment();
         log.atInfo()
                 .addKeyValue("vendor", VENDOR)
                 .addKeyValue("status", outcome)
                 .addKeyValue("latencyMs", elapsed.toMillis())
+                .addKeyValue("requestId", requestId)
                 .log("vendor call completed");
     }
 

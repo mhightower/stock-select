@@ -24,7 +24,7 @@ class EodhdClientIT {
         WebClient webClient = new WebClientConfig().eodhdWebClient(properties);
         EodhdClient client = new EodhdClient(webClient, properties, new VendorHealthTracker(), new SimpleMeterRegistry());
 
-        Quote quote = client.getQuote("AAPL").block();
+        Quote quote = client.getQuote("AAPL", "test-request-id").block();
 
         assertThat(quote).isNotNull();
         assertThat(quote.code()).isEqualTo("AAPL.US");
