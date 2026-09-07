@@ -56,4 +56,12 @@ class StockSelectApplicationTests {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("\"names\"");
     }
+
+    @Test
+    void includesACorrelationIdHeaderOnEveryResponse() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/health", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getFirst("X-Request-Id")).isNotBlank();
+    }
 }
