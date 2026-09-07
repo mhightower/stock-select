@@ -44,12 +44,12 @@ class ScreeningServiceTest {
     @Test
     void dispatchesToTheMatchingStrategyWithABareUppercasedSymbol() {
         Quote quote = new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31);
-        when(eodhdClient.getQuote("AAPL")).thenReturn(Mono.just(quote));
-        when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.empty());
+        when(eodhdClient.getQuote("AAPL", "test-request-id")).thenReturn(Mono.just(quote));
+        when(marketDataClient.getOptionsChain("AAPL", "test-request-id")).thenReturn(Flux.empty());
 
         ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-        ScreeningResult result = service.screen("aapl.us", "jade-lizard");
+        ScreeningResult result = service.screen("aapl.us", "jade-lizard", "test-request-id");
 
         assertThat(result.warnings()).isEmpty();
         assertThat(result.candidates()).hasSize(1);
@@ -61,24 +61,24 @@ class ScreeningServiceTest {
     void throwsForAnUnknownStrategyName() {
         ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-        assertThatThrownBy(() -> service.screen("AAPL", "iron-condor"))
+        assertThatThrownBy(() -> service.screen("AAPL", "iron-condor", "test-request-id"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("iron-condor");
     }
 
     @Test
     void fallsBackToMarketDataPriceAndWarnsWhenEodhdIsUnavailable() {
-        when(eodhdClient.getQuote("AAPL")).thenReturn(Mono.error(
+        when(eodhdClient.getQuote("AAPL", "test-request-id")).thenReturn(Mono.error(
                 new UpstreamApiException("EODHD", HttpStatus.TOO_MANY_REQUESTS, new RuntimeException("429"))));
         OptionContract contract = new OptionContract(
                 "AAPL260918C00110000", "AAPL", LocalDate.now().plusDays(45), "call",
                 110.0, 201.75, 1.00, 1.10, 100L, 500L,
                 0.16, 0.05, -0.02, 0.10, 0.25, 45, 1.05);
-        when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.just(contract));
+        when(marketDataClient.getOptionsChain("AAPL", "test-request-id")).thenReturn(Flux.just(contract));
 
         ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-        ScreeningResult result = service.screen("AAPL", "jade-lizard");
+        ScreeningResult result = service.screen("AAPL", "jade-lizard", "test-request-id");
 
         assertThat(result.warnings()).hasSize(1);
         assertThat(result.warnings().get(0)).contains("EODHD");
@@ -88,11 +88,11 @@ class ScreeningServiceTest {
     @Test
     void recordsScreenRequestMetricsOnSuccess() {
         Quote quote = new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31);
-        when(eodhdClient.getQuote("AAPL")).thenReturn(Mono.just(quote));
-        when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.empty());
+        when(eodhdClient.getQuote("AAPL", "test-request-id")).thenReturn(Mono.just(quote));
+        when(marketDataClient.getOptionsChain("AAPL", "test-request-id")).thenReturn(Flux.empty());
         ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-        service.screen("AAPL", "jade-lizard");
+        service.screen("AAPL", "jade-lizard", "test-request-id");
 
         assertThat(meterRegistry.counter("stockselect.screen.requests", "strategy", "jade-lizard", "outcome", "success").count())
                 .isEqualTo(1.0);
@@ -104,7 +104,7 @@ class ScreeningServiceTest {
     void recordsAFailureMetricWithAnUnknownStrategySentinelForAnUnknownStrategyName() {
         ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-        assertThatThrownBy(() -> service.screen("AAPL", "iron-condor"))
+        assertThatThrownBy(() -> service.screen("AAPL", "iron-condor", "test-request-id"))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(meterRegistry.counter("stockselect.screen.requests", "strategy", "unknown", "outcome", "failure").count())
@@ -113,13 +113,13 @@ class ScreeningServiceTest {
 
     @Test
     void recordsAFailureMetricWhenMarketDataFails() {
-        when(eodhdClient.getQuote("AAPL")).thenReturn(Mono.just(
+        when(eodhdClient.getQuote("AAPL", "test-request-id")).thenReturn(Mono.just(
                 new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31)));
-        when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.error(
+        when(marketDataClient.getOptionsChain("AAPL", "test-request-id")).thenReturn(Flux.error(
                 new UpstreamApiException("MarketData.app", HttpStatus.TOO_MANY_REQUESTS, new RuntimeException("429"))));
         ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-        assertThatThrownBy(() -> service.screen("AAPL", "jade-lizard"))
+        assertThatThrownBy(() -> service.screen("AAPL", "jade-lizard", "test-request-id"))
                 .isInstanceOf(UpstreamApiException.class);
 
         assertThat(meterRegistry.counter("stockselect.screen.requests", "strategy", "jade-lizard", "outcome", "failure").count())
@@ -133,12 +133,12 @@ class ScreeningServiceTest {
         appender.start();
         logbackLogger.addAppender(appender);
         try {
-            when(eodhdClient.getQuote("AAPL")).thenReturn(Mono.just(
+            when(eodhdClient.getQuote("AAPL", "test-request-id")).thenReturn(Mono.just(
                     new Quote("AAPL.US", 0L, 190, 195, 189, 193.5, 1_000_000, 191, 2.5, 1.31)));
-            when(marketDataClient.getOptionsChain("AAPL")).thenReturn(Flux.empty());
+            when(marketDataClient.getOptionsChain("AAPL", "test-request-id")).thenReturn(Flux.empty());
             ScreeningService service = new ScreeningService(eodhdClient, marketDataClient, List.of(new StubStrategy("jade-lizard")), meterRegistry);
 
-            service.screen("aapl.us", "jade-lizard");
+            service.screen("aapl.us", "jade-lizard", "test-request-id");
 
             ILoggingEvent event = appender.list.get(appender.list.size() - 1);
             Map<String, String> fields = event.getKeyValuePairs().stream()
@@ -147,6 +147,7 @@ class ScreeningServiceTest {
             assertThat(fields).containsEntry("symbol", "AAPL");
             assertThat(fields).containsEntry("status", "success");
             assertThat(fields).containsKey("latencyMs");
+            assertThat(fields).containsEntry("requestId", "test-request-id");
         } finally {
             logbackLogger.detachAppender(appender);
         }

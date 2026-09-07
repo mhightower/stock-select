@@ -69,7 +69,7 @@ class EodhdClientTest {
                         }
                         """)));
 
-        Quote quote = client().getQuote("AAPL").block();
+        Quote quote = client().getQuote("AAPL", "test-request-id").block();
 
         assertThat(quote).isNotNull();
         assertThat(quote.code()).isEqualTo("AAPL.US");
@@ -86,7 +86,7 @@ class EodhdClientTest {
         wireMock.stubFor(get(urlPathEqualTo("/api/real-time/AAPL"))
                 .willReturn(aResponse().withStatus(429).withBody("Too Many Requests")));
 
-        Mono<Quote> quote = client().getQuote("AAPL");
+        Mono<Quote> quote = client().getQuote("AAPL", "test-request-id");
 
         assertThatThrownBy(quote::block)
                 .isInstanceOf(UpstreamApiException.class)
@@ -112,7 +112,7 @@ class EodhdClientTest {
                 .build();
         EodhdClient client = new EodhdClient(webClient, properties, healthTracker, meterRegistry);
 
-        assertThatThrownBy(() -> client.getQuote("AAPL").block())
+        assertThatThrownBy(() -> client.getQuote("AAPL", "test-request-id").block())
                 .isInstanceOf(UpstreamApiException.class)
                 .satisfies(ex -> {
                     UpstreamApiException upstreamEx = (UpstreamApiException) ex;
@@ -147,7 +147,7 @@ class EodhdClientTest {
         appender.start();
         logbackLogger.addAppender(appender);
         try {
-            client().getQuote("AAPL").block();
+            client().getQuote("AAPL", "test-request-id").block();
 
             ILoggingEvent event = appender.list.get(appender.list.size() - 1);
             Map<String, String> fields = event.getKeyValuePairs().stream()
@@ -155,6 +155,7 @@ class EodhdClientTest {
             assertThat(fields).containsEntry("vendor", "EODHD");
             assertThat(fields).containsEntry("status", "success");
             assertThat(fields).containsKey("latencyMs");
+            assertThat(fields).containsEntry("requestId", "test-request-id");
         } finally {
             logbackLogger.detachAppender(appender);
         }

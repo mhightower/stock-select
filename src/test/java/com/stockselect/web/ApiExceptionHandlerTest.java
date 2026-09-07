@@ -7,6 +7,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,7 +25,7 @@ class ApiExceptionHandlerTest {
 
     @Test
     void returnsAGenericInternalServerErrorForAnUnexpectedException() throws Exception {
-        when(screeningService.screen("AAPL", "jade-lizard"))
+        when(screeningService.screen(eq("AAPL"), eq("jade-lizard"), any(String.class)))
                 .thenThrow(new IllegalStateException("something the caller should never see"));
 
         mockMvc.perform(get("/api/screen/jade-lizard/AAPL"))

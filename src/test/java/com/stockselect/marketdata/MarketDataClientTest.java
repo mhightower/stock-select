@@ -81,7 +81,7 @@ class MarketDataClientTest {
                         }
                         """)));
 
-        List<OptionContract> contracts = client().getOptionsChain("AAPL").collectList().block();
+        List<OptionContract> contracts = client().getOptionsChain("AAPL", "test-request-id").collectList().block();
 
         assertThat(contracts).hasSize(2);
 
@@ -119,7 +119,7 @@ class MarketDataClientTest {
                         { "s": "no_data", "errmsg": "Symbol not found." }
                         """)));
 
-        client().getOptionsChain("AAPL").collectList().block();
+        client().getOptionsChain("AAPL", "test-request-id").collectList().block();
 
         wireMock.verify(1, getRequestedFor(urlPathEqualTo("/v1/options/chain/AAPL/")));
     }
@@ -131,7 +131,7 @@ class MarketDataClientTest {
                         { "s": "no_data", "errmsg": "Symbol not found." }
                         """)));
 
-        List<OptionContract> contracts = client().getOptionsChain("ZZZZ").collectList().block();
+        List<OptionContract> contracts = client().getOptionsChain("ZZZZ", "test-request-id").collectList().block();
 
         assertThat(contracts).isEmpty();
         // A "no data for this symbol" business response is still a healthy vendor connection.
@@ -143,7 +143,7 @@ class MarketDataClientTest {
         wireMock.stubFor(get(urlPathEqualTo("/v1/options/chain/AAPL/"))
                 .willReturn(aResponse().withStatus(429).withBody("Too Many Requests")));
 
-        Flux<OptionContract> contracts = client().getOptionsChain("AAPL");
+        Flux<OptionContract> contracts = client().getOptionsChain("AAPL", "test-request-id");
 
         assertThatThrownBy(contracts::blockLast)
                 .isInstanceOf(UpstreamApiException.class)
@@ -186,7 +186,7 @@ class MarketDataClientTest {
                         """)
                         .withHeader("x-api-ratelimit-remaining", "7")));
 
-        client().getOptionsChain("AAPL").blockLast();
+        client().getOptionsChain("AAPL", "test-request-id").blockLast();
 
         assertThat(healthTracker.rateLimitRemaining("MarketData.app")).isEqualTo(7);
     }
@@ -205,7 +205,7 @@ class MarketDataClientTest {
                 .build();
         MarketDataClient client = new MarketDataClient(webClient, healthTracker, meterRegistry);
 
-        Flux<OptionContract> contracts = client.getOptionsChain("AAPL");
+        Flux<OptionContract> contracts = client.getOptionsChain("AAPL", "test-request-id");
 
         assertThatThrownBy(contracts::blockLast)
                 .isInstanceOf(UpstreamApiException.class)
@@ -231,7 +231,7 @@ class MarketDataClientTest {
         appender.start();
         logbackLogger.addAppender(appender);
         try {
-            client().getOptionsChain("AAPL").collectList().block();
+            client().getOptionsChain("AAPL", "test-request-id").collectList().block();
 
             ILoggingEvent event = appender.list.get(appender.list.size() - 1);
             Map<String, String> fields = event.getKeyValuePairs().stream()
@@ -239,6 +239,7 @@ class MarketDataClientTest {
             assertThat(fields).containsEntry("vendor", "MarketData.app");
             assertThat(fields).containsEntry("status", "success");
             assertThat(fields).containsKey("latencyMs");
+            assertThat(fields).containsEntry("requestId", "test-request-id");
         } finally {
             logbackLogger.detachAppender(appender);
         }
